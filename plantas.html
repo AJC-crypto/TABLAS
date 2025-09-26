@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>Plantas de Hormigón – Mapa interactivo</title>
+  <style>html, body {width:100%;height:100%;margin:0;padding:0} #map{position:absolute;top:0;bottom:0;right:0;left:0}</style>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css"/>
+</head>
+<body>
+<div id="map"></div>
+
+<div style="position: fixed; top: 12px; left: 12px; z-index:9999; background:white; padding:8px 12px; border:1px solid #999; border-radius:6px; font-size:12px; max-width:360px;">
+  <b>Plantas de hormigón (4)</b><br>
+  Distancia sobre la línea: <u>aprox. por carretera</u> (1,25 × distancia en línea recta).<br>
+  Para la <b>distancia exacta</b>, usa el enlace de <b>Ruta precisa</b> en el pop‑up (Google Maps).
+</div>
+
+<script>
+  var map = L.map('map', {center:[40.48, -3.63], zoom: 11});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: "© OpenStreetMap contributors" }).addTo(map);
+
+  var obra = [40.517, -3.676];
+  var obraMarker = L.marker(obra).addTo(map);
+  obraMarker.setIcon(L.AwesomeMarkers.icon({icon:'star', prefix:'glyphicon', markerColor:'red', iconColor:'white'}));
+  obraMarker.bindTooltip('Obra NET Las Tablas', {sticky:true});
+
+  var datos = [{"id": "H-1", "empresa": "BET\u00d3N CATAL\u00c1N S.A.", "nombre": "Planta Hormig\u00f3n de Alcobendas", "coords": [40.548, -3.641], "direccion": "Avenida Valgrande, 24 (Alcobendas)", "dist_linea": 4.5, "dist_aprox": 5.7, "gmaps": "https://www.google.com/maps/dir/?api=1&origin=40.548,-3.641&destination=40.517,-3.676&travelmode=driving", "cert1": "https://grupo-beton.com/es/beton-catalan-certifica-sus-centrales-de-hormigon-segun-iso-9001-e-iso-14001/", "cert2": "https://grupo-beton.com/es/las-40-plantas-de-hormigon-de-beton-catalan-y-formigons-girona-superan-con-exito-el-proceso-de-concesion-de-los-certificados-segun-el-rd-163-2019/", "cert3": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2019-5332"}, {"id": "H-2", "empresa": "BET\u00d3N CATAL\u00c1N S.A.", "nombre": "Planta Hormig\u00f3n Vallecas", "coords": [40.371, -3.622], "direccion": "Camino Hormigueras, 99; 28031 Madrid", "dist_linea": 16.9, "dist_aprox": 21.1, "gmaps": "https://www.google.com/maps/dir/?api=1&origin=40.371,-3.622&destination=40.517,-3.676&travelmode=driving", "cert1": "https://grupo-beton.com/es/beton-catalan-certifica-sus-centrales-de-hormigon-segun-iso-9001-e-iso-14001/", "cert2": "https://grupo-beton.com/es/las-40-plantas-de-hormigon-de-beton-catalan-y-formigons-girona-superan-con-exito-el-proceso-de-concesion-de-los-certificados-segun-el-rd-163-2019/", "cert3": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2019-5332"}, {"id": "H-3", "empresa": "BET\u00d3N CATAL\u00c1N S.A.", "nombre": "Planta Hormig\u00f3n Vic\u00e1lvaro II", "coords": [40.403, -3.585], "direccion": "C/ Los Cavilas, 3; 28052 Madrid", "dist_linea": 14.8, "dist_aprox": 18.5, "gmaps": "https://www.google.com/maps/dir/?api=1&origin=40.403,-3.585&destination=40.517,-3.676&travelmode=driving", "cert1": "https://grupo-beton.com/es/beton-catalan-certifica-sus-centrales-de-hormigon-segun-iso-9001-e-iso-14001/", "cert2": "https://grupo-beton.com/es/las-40-plantas-de-hormigon-de-beton-catalan-y-formigons-girona-superan-con-exito-el-proceso-de-concesion-de-los-certificados-segun-el-rd-163-2019/", "cert3": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2019-5332"}, {"id": "H-4", "empresa": "CEMEX", "nombre": "Planta Hormig\u00f3n San Fernando", "coords": [40.448, -3.528], "direccion": "Pol. Ind. Las Castellanas, parcela 76; 28830 San Fernando de Henares", "dist_linea": 14.7, "dist_aprox": 18.4, "gmaps": "https://www.google.com/maps/dir/?api=1&origin=40.448,-3.528&destination=40.517,-3.676&travelmode=driving", "cert1": "https://www.cemex.es/-/hormigon-certificado-en-todas-nuestras-plantas", "cert2": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2019-5332", "cert3": "https://www.cemex.es/acerca-de-cemex/donde-estamos-ubicados"}];
+
+  function chip(id){ return L.divIcon({className:'empty', html:`<div style="width:26px;height:26px;border-radius:13px;background:#e6f4ea;border:2px solid #0b7;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;box-shadow:0 0 3px rgba(0,0,0,.4)">{id}</div>`, iconSize:[28,28], iconAnchor:[14,14]}); }
+  var plantIcon = L.AwesomeMarkers.icon({icon:'none', markerColor:'green', prefix:'fa'});
+
+  datos.forEach(function(p){
+    // chip numerado
+    L.marker(p.coords, {icon: chip(p.id)}).addTo(map).bindTooltip(p.id + ' · ' + p.nombre, {sticky:true});
+
+    // chincheta verde
+    var pin = L.marker(p.coords, {icon: plantIcon}).addTo(map);
+
+    var popupHtml = `
+      <div style='font-size:12px'>
+        <b>${p.id} · ${p.nombre}</b><br>
+        <i>${p.empresa}</i><br>
+        ${p.direccion}<br>
+        <br>
+        <b>Distancia estimada:</b> ~${p.dist_aprox} km (línea recta ${p.dist_linea} km × 1,25).<br>
+        <b>Ruta precisa:</b> <a href="${p.gmaps}" target="_blank">Abrir en Google Maps</a><br>
+        <br>
+        <b>Certificados / Info oficial:</b><br>
+        • <a href="${p.cert1}" target="_blank">Certificación ISO 9001/14001</a><br>
+        • <a href="${p.cert2}" target="_blank">Control producción RD 163/2019</a><br>
+        • <a href="${p.cert3}" target="_blank">Referencia oficial</a>
+      </div>`;
+    pin.bindPopup(L.popup({maxWidth: 460}).setContent(popupHtml));
+
+    // Ruta (aproximada) y etiqueta con distancia
+    var linea = L.polyline([p.coords, obra], {color:'#0b7', weight:2, opacity:0.75}).addTo(map);
+    var mid = [(p.coords[0]+obra[0])/2, (p.coords[1]+obra[1])/2];
+    L.marker(mid, {
+      icon: L.divIcon({
+        className:'empty',
+        html: `<div style="background:rgba(255,255,255,.9);border:1px solid #0b7;border-radius:4px;padding:2px 6px;font-size:11px;">~${p.dist_aprox} km</div>`
+      })
+    }).addTo(map);
+  });
+</script>
+</body>
+</html>
