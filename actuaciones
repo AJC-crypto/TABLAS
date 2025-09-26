@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <actuaciones.kmz>Mapa KMZ</actuaciones.kmz>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Plugin para KMZ/KML -->
+  <script src="https://unpkg.com/leaflet-kmz@latest/dist/leaflet-kmz.js"></script>
+  <style>
+    html, body, #map { height: 100%; margin: 0; }
+    .credits {position:absolute; right:.5rem; bottom:.5rem; background:#fff9; padding:.25rem .5rem; border-radius:.5rem; font:12px system-ui}
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="credits">Leaflet + KMZ</div>
+
+  <script>
+    // 1) Crea el mapa
+    const map = L.map('map', { zoomControl: true }).setView([40.0, -3.7], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    // 2) Capa para cargar KMZ
+    const kmzLayer = L.kmzLayer();
+    kmzLayer.addTo(map);
+
+    // 3) Carga tu archivo KMZ (si está en la misma carpeta usa ruta relativa)
+    const kmzUrl = 'las_tablas.kmz';  // ← ← CAMBIA AQUÍ el nombre exacto de tu KMZ
+
+    kmzLayer.on('load', function(e) {
+      // Cuando cargue, ajusta el encuadre al contenido
+      try {
+        const b = e.layer.getBounds();
+        if (b && b.isValid()) map.fitBounds(b, { padding: [30, 30] });
+      } catch(err) { console.warn('No se pudo ajustar el encuadre:', err); }
+    });
+
+    kmzLayer.on('error', function(err){
+      alert('No se pudo cargar el KMZ. Revisa la ruta/nombre y que el archivo sea válido.');
+      console.error(err);
+    });
+
+    // Inicia descarga del KMZ
+    kmzLayer.load(kmzUrl);
+  </script>
+</body>
+</html>
