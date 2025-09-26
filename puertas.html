@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accesos SEMAT – Las Tablas (v5: autovía más próxima, receptores en ruta, giros críticos, tiempos)</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  html, body, #map { height: 58vh; margin:0; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  .wrap { max-width: 1240px; margin:0 auto; padding:1rem; }
+  .grid { display:grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
+  .panel { border:1px solid #ddd; border-radius:8px; padding:.75rem; }
+  h2 { margin:.6rem 0; }
+  .itinerario li { margin-bottom:.35rem; cursor:pointer; }
+  .tag { display:inline-block; padding:.05rem .45rem; border-radius:999px; background:#eee; font-size:.75rem; margin-left:.35rem; }
+  .problem { background:#ffebee; border-left:3px solid #f44336; padding:.35rem .5rem; border-radius:4px; }
+  .pill { display:inline-block; padding:.1rem .5rem; border-radius:999px; background:#eee; font-size:.8rem; }
+  .pulse { position: relative; width: 14px; height: 14px; border-radius: 50%; background: #000; opacity: .85; box-shadow: 0 0 0 rgba(34,139,230,.7); animation: pulse 1.8s infinite; border:2px solid #fff; }
+  .pulse.hospital { background:#e91e63; }
+  .pulse.school { background:#ff9800; }
+  .pulse.church { background:#3f51b5; }
+  .pulse.nursing { background:#4caf50; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(34,139,230,.7)} 70%{box-shadow:0 0 0 16px rgba(34,139,230,0)} 100%{box-shadow:0 0 0 0 rgba(34,139,230,0)} }
+  table { width:100%; border-collapse: collapse; font-size:.92rem; }
+  th,td { border:1px solid #ddd; padding:.4rem .5rem; vertical-align: top; }
+  th { background:#fafafa; position: sticky; top:0; z-index:1; }
+  #receptores { height: 24vh; overflow:auto; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .controls button { margin-right:.5rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Accesos a la campa SEMAT – Estación Técnica de Las Tablas</h1>
+  <p><span class="pill">v5</span> Cada ruta arranca en la <b>autovía más próxima</b> detectada automáticamente (motorway/trunk). Solo se dibujan <b>receptores próximos a la ruta</b> (≤50 m). Se identifican <b>giros problemáticos</b> para camión articulado (~19 m) y se muestra un <b>itinerario con tiempos</b>; cada paso es clicable y centra el mapa.</p>
+  <div id="map"></div>
+
+  <div class="grid" style="margin-top:1rem;">
+    <div class="panel">
+      <h2>Itinerarios con tiempos</h2>
+      <div id="itin-norte">
+        <h3>Ruta Norte (autovía → Puerta Norte)</h3>
+        <ol class="itinerario" id="ol-norte"></ol>
+        <div id="norte-resumen"></div>
+      </div>
+      <hr/>
+      <div id="itin-sur">
+        <h3>Ruta Sur (autovía → Puerta Sur)</h3>
+        <ol class="itinerario" id="ol-sur"></ol>
+        <div id="sur-resumen"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Receptores (solo los que caen sobre la ruta)</h2>
+      <div class="controls">
+        <button id="btnExportCSV">Exportar CSV</button>
+        <button id="btnKmlNorte">KML Ruta Norte</button>
+        <button id="btnKmlSur">KML Ruta Sur</button>
+      </div>
+      <table id="receptores">
+        <thead><tr><th>#</th><th>Nombre</th><th>Tipo</th><th>Dist. (m)</th><th>Ruta</th><th>Lat</th><th>Lon</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+<script>
+  const PUERTA_N = {"name":"Puerta Norte (Las Tablas)","lat":40.5073667,"lon":-3.6807222};
+  const PUERTA_S = {"name":"Puerta Sur (Fuencarral)","lat":40.4902639,"lon":-3.6744944};
+  const BBOX = [40.4702639, -3.7007222, 40.5273667, -3.6544944];
+
+  const map = L.map('map').setView([(BBOX[0]+BBOX[2])/2,(BBOX[1]+BBOX[3])/2], 13);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap'}).addTo(map);
+
+  function pulseClass(type) {
+    if (/hospital|clinic|doctor/i.test(type)) return 'pulse hospital';
+    if (/school|kindergarten|college|university/i.test(type)) return 'pulse school';
+    if (/worship|church|mosque|synagogue/i.test(type)) return 'pulse church';
+    if (/nursing_home|assisted/i.test(type)) return 'pulse nursing';
+    return 'pulse';
+  }
+
+  function mkPulse(lat,lon,cls,title) {
+    return L.marker([lat,lon],{icon:L.divIcon({className:'', html:'<div class="'+cls+'" title="'+(title||'')+'"></div>', iconSize:[16,16], iconAnchor:[8,8]})}).addTo(map);
+  }
+
+  async function overpassNearestMotorway(lat, lon) {
+    const radius = 2000;
+    const q = `[out:json][timeout:25];
+      (
+        node(around:{radius},{lat},{lon})[highway=motorway];
+        node(around:{radius},{lat},{lon})[highway=trunk];
+        node(around:{radius},{lat},{lon})[highway=motorway_junction];
+      ); out;`.replace(/\{lat\}/g, lat).replace(/\{lon\}/g, lon).replace(/\{radius\}/g, radius);
+    const resp = await fetch('https://overpass-api.de/api/interpreter', {method:'POST', body:q});
+    const j = await resp.json();
+    if (!j.elements || !j.elements.length) throw new Error('No motorway node nearby');
+    j.elements.sort((a,b)=> Math.hypot(a.lat-lat, a.lon-lon) - Math.hypot(b.lat-lat, b.lon-lon));
+    const el = j.elements[0];
+    return {lat: el.lat, lon: el.lon, name: 'Autovía más próxima'};
+  }
+
+  async function osrmRoute(a, b) {
+    const url = `https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson&steps=true`;
+    const r = await fetch(url);
+    const j = await r.json();
+    if (!j.routes || !j.routes[0]) throw new Error('OSRM sin ruta');
+    return j.routes[0];
+  }
+
+  function drawRoute(geojson, style) { return L.geoJSON(geojson, {style}).addTo(map); }
+
+  function angleDiff(b1, b2) {
+    let diff = ((b2 - b1 + 540) % 360) - 180;
+    return diff;
+  }
+
+  function classifyTurn(angle) {
+    const a = Math.abs(angle);
+    if (a < 15) return {sev:'Recto', tag:''};
+    if (a < 45) return {sev:'Suave', tag:'Suave'};
+    if (a < 90) return {sev:'Medio', tag:'Medio'};
+    if (a < 135) return {sev:'Cerrado', tag:'Cerrado'};
+    return {sev:'Muy cerrado', tag:'Muy cerrado'};
+  }
+
+  function kmlFromLine(name, line) {
+    const coords = line.geometry.coordinates.map(c => c[0]+','+c[1]+',0').join(' ');
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document>
+<name>${name}</name>
+<Placemark><name>${name}</name>
+<Style><LineStyle><color>ff0000ff</color><width>4</width></LineStyle></Style>
+<LineString><tessellate>1</tessellate><coordinates>${coords}</coordinates></LineString>
+</Placemark></Document></kml>`;
+  }
+
+  function download(filename, text, mime='application/xml') {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text],{type:mime}));
+    a.download = filename; a.click();
+  }
+
+  function receptorsQuery(bbox) {
+    const [minlat,minlon,maxlat,maxlon]=bbox;
+    return `[out:json][timeout:25];
+      (
+        node["amenity"~"hospital|clinic|doctors|school|kindergarten|college|university|place_of_worship|nursing_home"]({bbox});
+        way["amenity"~"hospital|clinic|doctors|school|kindergarten|college|university|place_of_worship|nursing_home"]({bbox});
+        node["social_facility"~"assisted_living|nursing_home"]({bbox});
+        way["social_facility"~"assisted_living|nursing_home"]({bbox});
+      ); out center;`.replace(/\{bbox\}/g, `${minlat},${minlon},${maxlat},${maxlon}`);
+  }
+
+  function addItinerary(steps, listElId) {
+    const ol = document.getElementById(listElId);
+    ol.innerHTML='';
+    steps.forEach((st, idx)=>{
+      const t = (st.duration/60).toFixed(1);
+      const name = st.name || '';
+      const brIn = st.maneuver && st.maneuver.bearing_before;
+      const brOut= st.maneuver && st.maneuver.bearing_after;
+      let tag = '';
+      if (brIn!=null && brOut!=null) {
+        const ang = Math.abs(angleDiff(brIn, brOut));
+        const cl = classifyTurn(ang);
+        if (cl.sev==='Cerrado' || cl.sev==='Muy cerrado') tag = `<span class="tag" style="background:#ffcdd2;border:1px solid #e57373;">Giro ${cl.sev}</span>`;
+      }
+      const li = document.createElement('li');
+      li.innerHTML = `${idx+1}. ${st.maneuver.instruction || 'Siga'} <b>${name}</b> – <span class="mono">${t} min</span> ${tag}`;
+      li.onclick = () => {
+        const gj = L.geoJSON(st.geometry);
+        map.fitBounds(gj.getBounds().pad(0.3)); gj.remove();
+      };
+      ol.appendChild(li);
+    });
+  }
+
+  function summarize(route, targetId) {
+    const km = (route.distance/1000).toFixed(2);
+    const min = (route.duration/60).toFixed(1);
+    document.getElementById(targetId).innerHTML = `<p><b>Longitud:</b> ${km} km &nbsp; <b>Tiempo estimado:</b> ${min} min</p>`;
+  }
+
+  (async () => {
+    // Origins (nearest motorway nodes)
+    const ORIG_N = await overpassNearestMotorway(PUERTA_N.lat, PUERTA_N.lon);
+    const ORIG_S = await overpassNearestMotorway(PUERTA_S.lat, PUERTA_S.lon);
+
+    mkPulse(ORIG_N.lat, ORIG_N.lon, 'pulse', 'Origen autovía norte').bindPopup('<b>Origen autovía (Norte)</b>');
+    mkPulse(ORIG_S.lat, ORIG_S.lon, 'pulse', 'Origen autovía sur').bindPopup('<b>Origen autovía (Sur)</b>');
+    mkPulse(PUERTA_N.lat, PUERTA_N.lon, 'pulse', 'Puerta Norte').bindPopup('<b>'+PUERTA_N.name+'</b>');
+    mkPulse(PUERTA_S.lat, PUERTA_S.lon, 'pulse', 'Puerta Sur').bindPopup('<b>'+PUERTA_S.name+'</b>');
+
+    const routeN = await osrmRoute(ORIG_N, PUERTA_N);
+    const routeS = await osrmRoute(ORIG_S, PUERTA_S);
+
+    const layerN = drawRoute(routeN.geometry, {color:'red', weight:5});
+    const layerS = drawRoute(routeS.geometry, {color:'blue', weight:5, dashArray:'6,6'});
+    const group = L.featureGroup([layerN, layerS]); map.fitBounds(group.getBounds().pad(0.12));
+
+    addItinerary(routeN.legs[0].steps, 'ol-norte');
+    addItinerary(routeS.legs[0].steps, 'ol-sur');
+    summarize(routeN, 'norte-resumen'); summarize(routeS, 'sur-resumen');
+
+    // Mark problematic turns (>=60°)
+    function markProblems(route, color) {
+      const steps = route.legs[0].steps;
+      steps.forEach(st => {
+        const brIn = st.maneuver && st.maneuver.bearing_before;
+        const brOut= st.maneuver && st.maneuver.bearing_after;
+        if (brIn==null || brOut==null) return;
+        const ang = Math.abs(angleDiff(brIn, brOut));
+        if (ang >= 60) {
+          const coords = st.geometry.coordinates;
+          const mid = coords[Math.floor(coords.length/2)];
+          L.circleMarker([mid[1], mid[0]], {radius:7, weight:2, color:color})
+            .addTo(map).bindPopup('<div class="problem"><b>Giro potencialmente conflictivo</b><br/>Ángulo aprox.: '+ang.toFixed(0)+'°<br/>Tramo: '+(st.name||'(s/n)')+'</div>');
+        }
+      });
+    }
+    markProblems(routeN, 'red'); markProblems(routeS, 'blue');
+
+    // Receptors near route (<=50 m)
+    const rq = receptorsQuery(BBOX);
+    const resp = await fetch('https://overpass-api.de/api/interpreter', {method:'POST', body: rq});
+    const data = await resp.json();
+    const feats = (data.elements||[]).map(el=>{
+      let lon, lat;
+      if (el.type==='node') { lon=el.lon; lat=el.lat; }
+      else if (el.type==='way' && el.center) { lon=el.center.lon; lat=el.center.lat; }
+      else return null;
+      const tags = el.tags||{};
+      const name = tags['name:es'] || tags.name || '(sin nombre)';
+      const type = tags.amenity || tags.social_facility || 'amenity';
+      return {name,type,lon,lat};
+    }).filter(Boolean);
+
+    function nearRoutesOnly(items) {
+      const out = [];
+      items.forEach(f=>{
+        const dN = turf.pointToLineDistance(turf.point([f.lon,f.lat]), routeN.geometry, {units:'meters'});
+        const dS = turf.pointToLineDistance(turf.point([f.lon,f.lat]), routeS.geometry, {units:'meters'});
+        const d = Math.min(dN, dS);
+        if (d <= 50) out.push({...f, dist:d, nearest: dN<=dS ? 'Ruta Norte' : 'Ruta Sur'});
+      });
+      return out.sort((a,b)=>a.dist-b.dist);
+    }
+
+    const receptors = nearRoutesOnly(feats);
+    receptors.forEach(f=>{
+      const cls = pulseClass(f.type);
+      mkPulse(f.lat, f.lon, cls, f.type).bindPopup('<b>'+f.name+'</b><br/>Tipo: '+f.type+'<br/>Distancia a ruta: <b>'+f.dist.toFixed(0)+' m</b><br/>'+f.nearest);
+    });
+
+    // populate table
+    const tbody = document.querySelector('#receptores tbody');
+    receptors.forEach((f,i)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${i+1}</td><td>${f.name}</td><td>${f.type}</td><td>${f.dist.toFixed(0)}</td><td>${f.nearest}</td><td>${f.lat.toFixed(5)}</td><td>${f.lon.toFixed(5)}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    // exports
+    document.getElementById('btnExportCSV').onclick = () => {
+      const head = ['#','Nombre','Tipo','Dist_m','Ruta','Lat','Lon'];
+      const rows = receptors.map((it,i)=>[i+1, it.name, it.type, Math.round(it.dist), it.nearest, it.lat, it.lon]);
+      const csv = [head].concat(rows).map(r=>r.join(';')).join('\n');
+      download('Receptores_en_ruta_SEMAT.csv', csv, 'text/csv');
+    };
+    document.getElementById('btnKmlNorte').onclick = () => download('Ruta_Norte_SEMAT.kml', kmlFromLine('Ruta Norte', routeN));
+    document.getElementById('btnKmlSur').onclick = () => download('Ruta_Sur_SEMAT.kml', kmlFromLine('Ruta Sur', routeS));
+  })();
+</script>
+</body>
+</html>

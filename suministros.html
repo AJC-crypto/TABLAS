@@ -1,0 +1,205 @@
+
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa empresas · v7.1 (topbar fija)</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<style>
+*{box-sizing:border-box} html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+/* topbar fija arriba */
+#topbar{position:fixed;top:0;left:0;right:0;background:#fff;border-bottom:1px solid #ddd;z-index:9999;padding:6px 10px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+body{padding-top:56px}
+#wrap{display:grid;grid-template-columns:360px 1fr 360px;height:calc(100vh - 56px)}
+#sidebarS,#sidebarC{border-right:1px solid #e0e0e0;overflow:auto;padding:12px;background:#fafafa}
+#sidebarC{border-right:none;border-left:1px solid #e0e0e0}
+#map{width:100%;height:100%} .leaflet-tile-pane{filter:grayscale(100%)}
+.controls{position:sticky;top:0;background:#fafafa;padding-bottom:8px;z-index:10}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.search{flex:1;min-width:120px;padding:8px;border:1px solid #ccc;border-radius:8px}
+.legend-mini{font-size:12px;color:#333;margin-bottom:8px;display:flex;gap:8px;align-items:center}
+.item{padding:8px 6px;border-bottom:1px solid #eee;cursor:pointer;display:flex;gap:8px;align-items:flex-start}
+.item:hover{background:#f0f0f0} .item h4{margin:0 0 4px 0;font-size:13px} .item .sub{font-size:12px;color:#444}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;color:#fff}
+.badge.s{background:#2e7d32} .badge.c{background:#1565c0} .selbox{margin-top:3px}
+/* etiquetas anti-solape */
+.lbl{position:absolute;background:#fff;border:1px solid rgba(0,0,0,.25);border-radius:6px;padding:2px 6px;font-size:12px;color:#111;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;cursor:pointer}
+.label-pane{z-index:600}
+button{padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer}
+button:hover{background:#f3f4f6}
+input[type='number']{width:80px;padding:4px 6px;border:1px solid #ccc;border-radius:6px}
+</style></head>
+<body>
+<!-- BARRA SUPERIOR SIEMPRE VISIBLE -->
+<div id="topbar">
+  <button id="btnFit">Zoom a todas</button>
+  <button id="btnShowAll">Mostrar todas</button>
+  <label>Radio (km): <input id="km" type="number" min="1" step="1" value=""></label>
+  <button id="btnApplyKm">Aplicar</button>
+  <label><input id="toggleLabels" type="checkbox" checked> Etiquetas permanentes</label>
+</div>
+
+<div id="wrap">
+  <aside id="sidebarS">
+    <div class="controls">
+      <h3 style="margin:0 0 6px 0;color:#2e7d32">Suministros (verde)</h3>
+      <div class="row">
+        <input id="qS" class="search" placeholder="Buscar en Suministros…">
+        <button id="selAllS">Todos</button><button id="selNoneS">Ninguno</button>
+      </div>
+      <div class="legend-mini">Visibles: <b id="countS">0</b></div>
+    </div>
+    <div id="listS"></div>
+  </aside>
+  <div id="map"></div>
+  <aside id="sidebarC">
+    <div class="controls">
+      <h3 style="margin:0 0 6px 0;color:#1565c0">Subcontratas (azul)</h3>
+      <div class="row">
+        <input id="qC" class="search" placeholder="Buscar en Subcontratas…">
+        <button id="selAllC">Todos</button><button id="selNoneC">Ninguno</button>
+      </div>
+      <div class="legend-mini">Visibles: <b id="countC">0</b></div>
+    </div>
+    <div id="listC"></div>
+  </aside>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+const LAS_TABLAS = { lat: 40.508, lng: -3.676 };
+const ORIG = [{"empresa": "EXCAVACIONES HENARES S.L", "producto": "ARIDOS Y CAPAS GRANULARES", "tipo": "suministro", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "DOMINGO LAREDO S.L", "producto": "ARIDOS Y CAPAS GRANULARES", "tipo": "suministro", "ciudad": "TOLEDO", "fallback": {"lat": 39.8628, "lng": -4.0273}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "ACERSA", "producto": "ACERO CORRUGADO", "tipo": "suministro", "ciudad": "CORUÑA", "fallback": {"lat": 40.508, "lng": -3.676}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "HIERROS SANCHO", "producto": "ACERO CORRUGADO", "tipo": "suministro", "ciudad": "VIZCAYA", "fallback": {"lat": 40.508, "lng": -3.676}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "BETÓN CATALÁN S.A", "producto": "HORMIGÓN", "tipo": "suministro", "ciudad": "ALCOBENDAS Y\n DISTRITO DE VALLECAS (MADRID)", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "CEMEX", "producto": "HORMIGÓN", "tipo": "suministro", "ciudad": "VICÁLVARO Y TORREJÓN (MADRID)", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "HORMIGONES DEL JARAMA", "producto": "HORMIGÓN", "tipo": "suministro", "ciudad": "", "fallback": {"lat": 40.508, "lng": -3.676}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "BUPRE S.L", "producto": "PREFABRICADOS DE HORMIGÓN", "tipo": "suministro", "ciudad": "BURGOS", "fallback": {"lat": 42.3439, "lng": -3.6969}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "C.H S.L", "producto": "PREFABRICADOS DE HORMIGÓN", "tipo": "suministro", "ciudad": "HUESCA", "fallback": {"lat": 42.1401, "lng": -0.4089}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "POSTES XEISALVO S.L.U", "producto": "PREFABRICADOS DE HORMIGÓN", "tipo": "suministro", "ciudad": "ORENSE", "fallback": {"lat": 40.508, "lng": -3.676}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "PRENSAGRA COMERCIAL DE MATERIALES S.L", "producto": "PREFABRICADOS DE HORMIGÓN", "tipo": "suministro", "ciudad": "TOLEDO", "fallback": {"lat": 39.8628, "lng": -4.0273}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "SANIPLAST", "producto": "TUBOS P.V.C", "tipo": "suministro", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "REDALSA", "producto": "ALQUILER \nPÓRTICOS PEM-LEM", "tipo": "suministro", "ciudad": "VALLADOLID", "fallback": {"lat": 41.6523, "lng": -4.7245}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "CANTERA EL ALJIBE", "producto": "BALASTO", "tipo": "suministro", "ciudad": "ALMONACID DE TOLEDO (TOLEDO)", "fallback": {"lat": 39.8628, "lng": -4.0273}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "CANTERA LA CURVA", "producto": "BALASTO", "tipo": "suministro", "ciudad": "", "fallback": {"lat": 40.508, "lng": -3.676}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "AIR RAIL", "producto": "SISTEMA DE EXTRACCIÓN Y LIMPIEZA DE WC's DE TRENES", "tipo": "suministro", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "LLALCO FLUID TECHNOLOGY", "producto": "TOPERAS", "tipo": "suministro", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "PASCH Y CÍA S.A.U", "producto": "TOPERAS", "tipo": "suministro", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "MP ASCENSORES", "producto": "ASCENSOR", "tipo": "suministro", "ciudad": "SEVILLA", "fallback": {"lat": 37.3891, "lng": -5.9845}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "SCHINDLER,S.A.", "producto": "ASCENSOR", "tipo": "suministro", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "ADYMAR", "producto": "ADOQUINES Y SOLADOS", "tipo": "suministro", "ciudad": "SEVILLA", "fallback": {"lat": 37.3891, "lng": -5.9845}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "TALLERES CORONILLA", "producto": "ACERO ESTRUCTURAL, TRAMEX,PÉRGOLA", "tipo": "suministro", "ciudad": "SEVILLA", "fallback": {"lat": 37.3891, "lng": -5.9845}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "PROMONSUR", "producto": "ACERO ESTRUCTURAL, TRAMEX,PÉRGOLA", "tipo": "suministro", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "PREHORQUI S.A", "producto": "PANEL G.R.C", "tipo": "suministro", "ciudad": "SEGOVIA", "fallback": {"lat": 40.9429, "lng": -4.1088}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "PREFABRICADOS PREINCO S.L", "producto": "PANEL G.R.C", "tipo": "suministro", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "3E TERMINACIONES INTEGRALES S.L", "producto": "IMPERMEABILIZACIONES", "tipo": "suministro", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "METALESA", "producto": "BARANDILLAS Y CERRAMIENTOS", "tipo": "suministro", "ciudad": "VALENCIA", "fallback": {"lat": 39.4699, "lng": -0.3763}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "INSAMETAL", "producto": "BARANDILLAS Y CERRAMIENTOS", "tipo": "suministro", "ciudad": "CIUDAD REAL", "fallback": {"lat": 38.9848, "lng": -3.927}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "EL EJIDILLO", "producto": "JARDINERÍA", "tipo": "suministro", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "ssuministros.pdf", "color": "#2e7d32"}, {"empresa": "EXCAVACIONES HENARES S.L", "producto": "APOYO A LAS EXCAVACIONES", "tipo": "subcontrata", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "DOMINGO LAREDO S.L", "producto": "APOYO A LAS EXCAVACIONES", "tipo": "subcontrata", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "NORTROBRAMA S.L", "producto": "APOYO A LAS EXCAVACIONES", "tipo": "subcontrata", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "GRUPO ALQUIVIR", "producto": "MONTAJE DE VÍA", "tipo": "subcontrata", "ciudad": "SEVILLA", "fallback": {"lat": 37.3891, "lng": -5.9845}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "MONTENEGRO EXPERSA S.L", "producto": "PILOTES", "tipo": "subcontrata", "ciudad": "SEVILLA", "fallback": {"lat": 37.3891, "lng": -5.9845}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "SILSOIL.S.L.", "producto": "PILOTES", "tipo": "subcontrata", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "TERRATEST S.A.U", "producto": "PILOTES", "tipo": "subcontrata", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "TALLERES CORONILLA", "producto": "ACERO ESTRUCTURAL", "tipo": "subcontrata", "ciudad": "SEVILLA", "fallback": {"lat": 37.3891, "lng": -5.9845}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "PROMONSUR", "producto": "ACERO ESTRUCTURAL", "tipo": "subcontrata", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "PREHORQUI S.A", "producto": "PANEL G.R.C", "tipo": "subcontrata", "ciudad": "SEGOVIA", "fallback": {"lat": 40.9429, "lng": -4.1088}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "PREFABRICADOS PREINCO S.L", "producto": "PANEL G.R.C", "tipo": "subcontrata", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "3E TERMINACIONES INTEGRALES S.L", "producto": "IMPERMEABILIZACIONES", "tipo": "subcontrata", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "ACISA (Grupo Aldesa)", "producto": "INSTALAC.ELÉCTRICIDAD, ALUMBRADO, CONTROL ACCESOS, CCTV, PCI, VENTILACIÓN Y CLIMATIZACIÓN", "tipo": "subcontrata", "ciudad": "CATALUÑA", "fallback": {"lat": 40.508, "lng": -3.676}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "COLINAS BODELON S.L", "producto": "INSTALAC.ELÉCTRICIDAD, ALUMBRADO, CONTROL ACCESOS, CCTV, PCI, VENTILACIÓN Y CLIMATIZACIÓN", "tipo": "subcontrata", "ciudad": "LEÓN", "fallback": {"lat": 42.5987, "lng": -5.5671}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "METALESA", "producto": "BARANDILLAS Y CERRAMIENTOS", "tipo": "subcontrata", "ciudad": "VALENCIA", "fallback": {"lat": 39.4699, "lng": -0.3763}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "INSAMETAL", "producto": "BARANDILLAS Y CERRAMIENTOS", "tipo": "subcontrata", "ciudad": "CIUDAD REAL", "fallback": {"lat": 38.9848, "lng": -3.927}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "REDALSA", "producto": "SOLDADURA ELÉCTRICA", "tipo": "subcontrata", "ciudad": "VALLADOLID", "fallback": {"lat": 41.6523, "lng": -4.7245}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "CITRACC RAIL", "producto": "CALENTAMIENTO DE AGUJAS", "tipo": "subcontrata", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "PARRÓS OBRAS S.L.U", "producto": "CIMENTACIÓN DE CATENARIA", "tipo": "subcontrata", "ciudad": "CIUDAD REAL", "fallback": {"lat": 38.9848, "lng": -3.927}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "EL EJIDILLO", "producto": "JARDINERÍA", "tipo": "subcontrata", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "SALMEDINA TRATAMIENTO DE RESIDUOS INERTES S.L", "producto": "GESTORES DE RESIDUOS DE CONSTRUCCIÓN (RCD'S)", "tipo": "subcontrata", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "TRYOBSA AMBIENTAL S.L", "producto": "GESTORES DE RESIDUOS DE CONSTRUCCIÓN (RCD'S)", "tipo": "subcontrata", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "CEMOSA", "producto": "CONTROL DE CALIDAD DE LOS MATERIALES", "tipo": "subcontrata", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "G.M.D", "producto": "CONTROL DE CALIDAD DE LOS MATERIALES", "tipo": "subcontrata", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "subcintratadas.pdf", "color": "#1565c0"}, {"empresa": "LABIKER S.L", "producto": "CONTROL DE CALIDAD DE LOS MATERIALES", "tipo": "subcontrata", "ciudad": "MADRID", "fallback": {"lat": 40.4168, "lng": -3.7038}, "carta": "subcintratadas.pdf", "color": "#1565c0"}];
+
+function markerIcon(color){
+  const svg=encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='"+color+"' d='M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z'/></svg>");
+  return L.icon({iconUrl:'data:image/svg+xml;charset=UTF-8,'+svg,iconSize:[28,28],iconAnchor:[14,28],popupAnchor:[0,-28]});
+}
+const COLORS={ suministro:'#2e7d32', subcontrata:'#1565c0' };
+
+const map=L.map('map',{zoomControl:true}).setView([40.2,-3.7],5.8);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(map);
+const labelPane=map.createPane('labels'); labelPane.classList.add('label-pane');
+
+let layers=[],bounds=[],selected={},focusKey=null,circle=null;
+
+function keySel(p){ return `SEL_${(p.empresa||'').toUpperCase()}_${p.tipo}`; }
+
+function popupHTML(p,lat,lng){
+  const carta = p.carta ? `<div style="font-size:12px;margin-top:6px"><a href="${p.carta}" target="_blank" style="color:#0B57D0">📄 Carta de compromiso</a></div>` : '';
+  const gm = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.empresa+', '+(p.ciudad||'')+', España')}`;
+  return `<div style="font:14px Arial;max-width:380px">
+    <h3 style="margin:0 0 4px 0;font-size:16px">${p.empresa}</h3>
+    <div style="font-size:13px;margin-bottom:6px">${p.tipo==='suministro'?'Suministra':'Subcontrata'}: <b>${p.producto||'—'}</b></div>
+    <div style="font-size:12px;color:#444;margin-bottom:6px">Ciudad (Excel): ${p.ciudad||'—'}</div>
+    ${lat&&lng?`<div style='font-size:11px;color:#666'>Coord: ${lat.toFixed(5)}, ${lng.toFixed(5)}</div>`:''}
+    ${carta}
+    <div style="font-size:12px;margin-top:6px"><a href="${gm}" target="_blank" style="color:#0B57D0">🔗 Google Maps</a></div>
+  </div>`;
+}
+
+function addMarker(p,coord){
+  const m=L.marker([coord.lat,coord.lng],{icon:markerIcon(COLORS[p.tipo])});
+  m.bindPopup(popupHTML(p,coord.lat,coord.lng));
+  m.on('click',()=>{ focusKey=keySel(p); applyFilters(); m.openPopup(); });
+  m.on('popupclose',()=>{ focusKey=null; applyFilters(); });
+  m.addTo(map);
+  layers.push({...p,marker:m,lat:coord.lat,lng:coord.lng});
+  bounds.push([coord.lat,coord.lng]);
+  selected[keySel(p)] = true;
+}
+
+ORIG.forEach(p=> addMarker(p, p.fallback));
+
+// Listas y filtros
+const listS=document.getElementById('listS'), listC=document.getElementById('listC'), qS=document.getElementById('qS'), qC=document.getElementById('qC'), countS=document.getElementById('countS'), countC=document.getElementById('countC');
+
+function buildLists(){
+  const s=(qS.value||'').toLowerCase(), c=(qC.value||'').toLowerCase();
+  listS.innerHTML=''; listC.innerHTML=''; let nS=0,nC=0;
+  layers.forEach(Lr=>{
+    const ok=[Lr.empresa,Lr.producto,Lr.ciudad].some(t=>(t||'').toLowerCase().includes(Lr.tipo==='suministro'?s:c));
+    if(!ok) return;
+    const id=keySel(Lr), checked=selected[id]!==false;
+    const el=document.createElement('div'); el.className='item';
+    el.innerHTML=`<input class="selbox" type="checkbox" ${checked?'checked':''} data-id="${id}">
+      <div style="flex:1 1 auto">
+        <h4><span class="badge ${Lr.tipo==='suministro'?'s':'c'}">${Lr.tipo==='suministro'?'SUMIN.':'SUBCON.'}</span> ${Lr.empresa}</h4>
+        <div class="sub">${Lr.producto||'—'} · ${Lr.ciudad||'—'}</div>
+      </div>`;
+    el.onclick=(e)=>{ if(e.target.classList.contains('selbox')) return; focusKey=id; applyFilters(); Lr.marker.openPopup(); };
+    (Lr.tipo==='suministro'?listS:listC).appendChild(el);
+    if(Lr.tipo==='suministro') nS++; else nC++;
+  });
+  countS.textContent=nS; countC.textContent=nC;
+  document.querySelectorAll('.selbox').forEach(cb=> cb.onchange=()=>{ selected[cb.dataset.id]=cb.checked; applyFilters(); });
+}
+
+function applyKmCircle(){
+  const v=parseFloat(document.getElementById('km').value);
+  if(circle){ map.removeLayer(circle); circle=null; }
+  if(!isNaN(v)&&v>0){ circle=L.circle([LAS_TABLAS.lat,LAS_TABLAS.lng],{radius:v*1000,color:'#444',weight:1,fillOpacity:0.05}).addTo(map); }
+}
+
+function applyFilters(){
+  const v=parseFloat(document.getElementById('km').value); const hasKm=!isNaN(v)&&v>0;
+  layers.forEach(Lr=>{
+    const id=keySel(Lr), isSel=selected[id]!==false;
+    const focusOk = (focusKey===null)||(id===focusKey);
+    let kmok = true;
+    if(hasKm && Lr.lat && Lr.lng){
+      const R=6371,toRad=d=>d*Math.PI/180,dLat=toRad(Lr.lat-LAS_TABLAS.lat),dLon=toRad(Lr.lng-LAS_TABLAS.lng);
+      const a=Math.sin(dLat/2)**2 + Math.cos(toRad(LAS_TABLAS.lat))*Math.cos(toRad(Lr.lat))*Math.sin(dLon/2)**2;
+      const d=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+      kmok = d <= v + 1e-6;
+    }
+    const show = isSel && focusOk && kmok;
+    if(show) Lr.marker.addTo(map); else map.removeLayer(Lr.marker);
+  });
+  layoutLabels();
+}
+
+function layoutLabels(){
+  document.querySelectorAll('.lbl').forEach(el=>el.remove());
+  if(!document.getElementById('toggleLabels').checked) return;
+  const vis=layers.filter(Lr=> map.hasLayer(Lr.marker));
+  const pane=document.querySelector('.label-pane');
+  const occ=[];
+  function ov(a,b){return !(b.x>a.x+a.w||b.x+b.w<a.x||b.y>a.y+a.h||b.y+b.h<a.y);}
+  const meas=document.createElement('div'); meas.className='lbl'; meas.style.left='-1000px'; meas.style.top='-1000px'; meas.style.visibility='hidden'; pane.appendChild(meas);
+  vis.forEach(Lr=>{
+    const pt=map.latLngToLayerPoint([Lr.lat,Lr.lng]);
+    meas.textContent=Lr.empresa; const bb=meas.getBoundingClientRect(); const w=bb.width,h=bb.height;
+    const steps=[[0,-18],[18,-18],[18,0],[18,18],[0,18],[-18,18],[-18,0],[-18,-18]];
+    let placed=null;
+    for(let r=1;r<=7 && !placed;r++){
+      for(let k=0;k<steps.length && !placed;k++){
+        const x=pt.x+steps[k][0]*r, y=pt.y+steps[k][1]*r, rect={x,y,w:w+12,h:h+8}, pad={x:x-4,y:y-4,w:w+20,h:h+16};
+        if(occ.every(rr=>!ov(pad,rr))) placed=rect;
+      }
+    }
+    if(!placed) placed={x:pt.x+12,y:pt.y-(h+20),w:w+12,h:h+8};
+    occ.push(placed);
+    const div=document.createElement('div'); div.className='lbl'; div.style.left=placed.x+'px'; div.style.top=placed.y+'px';
+    div.style.borderColor=(Lr.tipo==='suministro'?'#2e7d32':'#1565c0'); div.textContent=Lr.empresa;
+    div.onclick=()=>{ focusKey=keySel(Lr); applyFilters(); Lr.marker.openPopup(); };
+    pane.appendChild(div);
+  });
+  meas.remove();
+}
+
+// Botones topbar
+document.getElementById('btnFit').onclick = ()=>{ if(bounds.length) map.fitBounds(bounds,{padding:[20,20]}); };
+document.getElementById('btnShowAll').onclick = ()=>{ focusKey=null; applyFilters(); };
+document.getElementById('btnApplyKm').onclick = ()=>{ applyKmCircle(); applyFilters(); };
+document.getElementById('toggleLabels').onchange = ()=> layoutLabels();
+
+// Lateral
+document.getElementById('selAllS').onclick = ()=>{ layers.filter(l=>l.tipo==='suministro').forEach(l=>selected[keySel(l)]=true); applyFilters(); buildLists(); };
+document.getElementById('selNoneS').onclick = ()=>{ layers.filter(l=>l.tipo==='suministro').forEach(l=>selected[keySel(l)]=false); applyFilters(); buildLists(); };
+document.getElementById('selAllC').onclick = ()=>{ layers.filter(l=>l.tipo==='subcontrata').forEach(l=>selected[keySel(l)]=true); applyFilters(); buildLists(); };
+document.getElementById('selNoneC').onclick = ()=>{ layers.filter(l=>l.tipo==='subcontrata').forEach(l=>selected[keySel(l)]=false); applyFilters(); buildLists(); };
+document.getElementById('qS').oninput = ()=>{ buildLists(); applyFilters(); };
+document.getElementById('qC').oninput = ()=>{ buildLists(); applyFilters(); };
+
+buildLists(); applyFilters(); document.getElementById('btnFit').click();
+map.on('moveend zoomend', layoutLabels); window.addEventListener('resize', layoutLabels);
+</script>
+</body></html>

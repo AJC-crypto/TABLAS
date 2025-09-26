@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accesos SEMAT – Las Tablas (v6: receptores próximos + umbral ajustable)</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  html, body, #map { height: 58vh; margin:0; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  .wrap { max-width: 1240px; margin:0 auto; padding:1rem; }
+  .grid { display:grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
+  .panel { border:1px solid #ddd; border-radius:8px; padding:.75rem; }
+  .controls button { margin-right:.5rem; }
+  .pill { display:inline-block; padding:.1rem .5rem; border-radius:999px; background:#eee; font-size:.8rem; }
+  table { width:100%; border-collapse: collapse; font-size:.92rem; }
+  th,td { border:1px solid #ddd; padding:.4rem .5rem; vertical-align: top; }
+  th { background:#fafafa; position: sticky; top:0; z-index:1; }
+  #receptores { height: 24vh; overflow:auto; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .pulse { position: relative; width: 14px; height: 14px; border-radius: 50%; background: #000; opacity: .85; box-shadow: 0 0 0 rgba(34,139,230,.7); animation: pulse 1.8s infinite; border:2px solid #fff; }
+  .pulse.hospital { background:#e91e63; }
+  .pulse.school { background:#ff9800; }
+  .pulse.church { background:#3f51b5; }
+  .pulse.nursing { background:#4caf50; }
+  .ring { width:14px; height:14px; border-radius:50%; border:2px solid #000; background:rgba(0,0,0,0); }
+  .ring.hospital { border-color:#e91e63; }
+  .ring.school { border-color:#ff9800; }
+  .ring.church { border-color:#3f51b5; }
+  .ring.nursing { border-color:#4caf50; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Accesos a la campa SEMAT – Estación Técnica de Las Tablas</h1>
+  <p><span class="pill">v6</span> Además de los receptores <b>sobre la ruta</b> (≤ 50 m), se incluyen los <b>próximos</b> hasta un umbral ajustable (por defecto 200 m). Marcadores llenos = en ruta; anillos = próximos.</p>
+  <div class="controls">
+    Umbral proximidad (m): <input id="umbral" type="number" value="200" style="width:6rem"/> 
+    <button id="btnAplicar">Aplicar</button>
+    <button id="btnCSV">Exportar CSV</button>
+    <button id="btnKmlN">KML Ruta Norte</button>
+    <button id="btnKmlS">KML Ruta Sur</button>
+  </div>
+  <div id="map"></div>
+
+  <div class="grid" style="margin-top:1rem;">
+    <div class="panel">
+      <h2>Itinerarios con tiempos</h2>
+      <h3>Ruta Norte</h3>
+      <ol id="ol-n"></ol>
+      <div id="sum-n"></div>
+      <hr/>
+      <h3>Ruta Sur</h3>
+      <ol id="ol-s"></ol>
+      <div id="sum-s"></div>
+    </div>
+    <div class="panel">
+      <h2>Receptores (en ruta y próximos)</h2>
+      <table id="receptores">
+        <thead><tr><th>#</th><th>Nombre</th><th>Tipo</th><th>Dist. (m)</th><th>Clase</th><th>Ruta</th><th>Lat</th><th>Lon</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+<script>
+  const PUERTA_N = { "name":"Puerta Norte (Las Tablas)", "lat":40.5073667, "lon":-3.6807222 };
+  const PUERTA_S = { "name":"Puerta Sur (Fuencarral)", "lat":40.4902639, "lon":-3.6744944 };
+  const BBOX = [40.4702639, -3.7007222, 40.5273667, -3.6544944];
+
+  const map = L.map('map').setView([(BBOX[0]+BBOX[2])/2,(BBOX[1]+BBOX[3])/2], 13);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap'}).addTo(map);
+
+  function pulseClass(type) {
+    if (/hospital|clinic|doctor/i.test(type)) return 'hospital';
+    if (/school|kindergarten|college|university/i.test(type)) return 'school';
+    if (/worship|church|mosque|synagogue/i.test(type)) return 'church';
+    if (/nursing_home|assisted/i.test(type)) return 'nursing';
+    return '';
+  }
+  function iconHTML(cls, kind) {
+    const k = pulseClass(kind);
+    return `<div class="${cls} ${k}"></div>`;
+  }
+  function mk(lat, lon, html) {
+    return L.marker([lat,lon], { icon: L.divIcon({className:'', html, iconSize:[16,16], iconAnchor:[8,8]}) }).addTo(map);
+  }
+
+  async function overpassNearestMotorway(lat, lon) {
+    const radius = 2000;
+    const q = `[out:json][timeout:25];
+      (
+        node(around:${radius},${lat},${lon})[highway=motorway];
+        node(around:${radius},${lat},${lon})[highway=trunk];
+        node(around:${radius},${lat},${lon})[highway=motorway_junction];
+      ); out;`;
+    const resp = await fetch('https://overpass-api.de/api/interpreter', {method:'POST', body:q});
+    const j = await resp.json();
+    j.elements.sort((a,b)=> Math.hypot(a.lat-lat, a.lon-lon) - Math.hypot(b.lat-lat, b.lon-lon));
+    const el = j.elements[0];
+    return {lat: el.lat, lon: el.lon, name: 'Autovía más próxima'};
+  }
+  async function osrmRoute(a,b) {
+    const url = `https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson&steps=true`;
+    const r = await fetch(url); const j = await r.json(); return j.routes[0];
+  }
+  function drawRoute(gj, style) { return L.geoJSON(gj, {style}).addTo(map); }
+  function angleDiff(b1,b2) { return ((b2-b1+540)%360)-180; }
+  function classify(angle) {
+    const a=Math.abs(angle);
+    if (a<15) return 'Recto';
+    if (a<45) return 'Suave';
+    if (a<90) return 'Medio';
+    if (a<135) return 'Cerrado';
+    return 'Muy cerrado';
+  }
+  function kmlFromLine(name, route) {
+    const coords = route.geometry.coordinates.map(c=>c[0]+','+c[1]+',0').join(' ');
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document>
+<name>${name}</name>
+<Placemark><name>${name}</name>
+<Style><LineStyle><color>ff0000ff</color><width>4</width></LineStyle></Style>
+<LineString><tessellate>1</tessellate><coordinates>${coords}</coordinates></LineString>
+</Placemark></Document></kml>`;
+  }
+  function download(fn, txt, mime='application/xml') {
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:mime})); a.download=fn; a.click();
+  }
+
+  function receptorsQuery(bbox) {
+    const [minlat,minlon,maxlat,maxlon]=bbox;
+    return `[out:json][timeout:25];
+      (
+        node["amenity"~"hospital|clinic|doctors|school|kindergarten|college|university|place_of_worship|nursing_home"](${minlat},${minlon},${maxlat},${maxlon});
+        way["amenity"~"hospital|clinic|doctors|school|kindergarten|college|university|place_of_worship|nursing_home"](${minlat},${minlon},${maxlat},${maxlon});
+        node["social_facility"~"assisted_living|nursing_home"](${minlat},${minlon},${maxlat},${maxlon});
+        way["social_facility"~"assisted_living|nursing_home"](${minlat},${minlon},${maxlat},${maxlon});
+      ); out center;`;
+  }
+
+  function addItinerary(steps, elId) {
+    const ol=document.getElementById(elId); ol.innerHTML='';
+    steps.forEach((st,i)=>{
+      const t=(st.duration/60).toFixed(1);
+      const b1=st.maneuver?.bearing_before; const b2=st.maneuver?.bearing_after;
+      const sev=(b1!=null&&b2!=null)?classify(Math.abs(angleDiff(b1,b2))):'';
+      const li=document.createElement('li');
+      li.innerHTML=`${i+1}. ${st.maneuver.instruction||'Siga'} <b>${st.name||''}</b> – <span class="mono">${t} min</span> ${sev&& (sev==='Cerrado'||sev==='Muy cerrado')?'<span class="pill" style="background:#ffcdd2;border:1px solid #e57373;">Giro '+sev+'</span>':''}`;
+      li.onclick=()=>{ const g=L.geoJSON(st.geometry); map.fitBounds(g.getBounds().pad(0.3)); g.remove(); };
+      ol.appendChild(li);
+    });
+  }
+  function summarize(route, id) {
+    document.getElementById(id).innerHTML = `<p><b>Longitud:</b> ${(route.distance/1000).toFixed(2)} km &nbsp; <b>Tiempo:</b> ${(route.duration/60).toFixed(1)} min</p>`;
+  }
+
+  function populateTable(items) {
+    const tbody=document.querySelector('#receptores tbody'); tbody.innerHTML='';
+    items.forEach((f,i)=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${i+1}</td><td>${f.name}</td><td>${f.type}</td><td>${f.dist.toFixed(0)}</td><td>${f.class}</td><td>${f.nearest}</td><td>${f.lat.toFixed(5)}</td><td>${f.lon.toFixed(5)}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  (async () => {
+    const ORIG_N = await overpassNearestMotorway(PUERTA_N.lat, PUERTA_N.lon);
+    const ORIG_S = await overpassNearestMotorway(PUERTA_S.lat, PUERTA_S.lon);
+
+    const Rn = await osrmRoute(ORIG_N, PUERTA_N);
+    const Rs = await osrmRoute(ORIG_S, PUERTA_S);
+    const LN = drawRoute(Rn.geometry, {color:'red', weight:5});
+    const LS = drawRoute(Rs.geometry, {color:'blue', weight:5, dashArray:'6,6'});
+    const group=L.featureGroup([LN,LS]); map.fitBounds(group.getBounds().pad(0.12));
+    addItinerary(Rn.legs[0].steps, 'ol-n'); addItinerary(Rs.legs[0].steps, 'ol-s');
+    summarize(Rn,'sum-n'); summarize(Rs,'sum-s');
+
+    const resp=await fetch('https://overpass-api.de/api/interpreter', {method:'POST', body: receptorsQuery(BBOX)});
+    const data=await resp.json();
+    const feats=(data.elements||[]).map(el=>{
+      let lon,lat; if(el.type==='node'){lon=el.lon;lat=el.lat;} else if(el.type==='way' && el.center){lon=el.center.lon;lat=el.center.lat;} else return null;
+      const t=el.tags||{}; const name=t['name:es']||t.name||'(sin nombre)'; const type=t.amenity||t.social_facility||'amenity';
+      return {name,type,lon,lat};
+    }).filter(Boolean);
+
+    function computeSets(umbral) {
+      const enRuta=[]; const proximos=[];
+      feats.forEach(f=>{
+        const dN=turf.pointToLineDistance(turf.point([f.lon,f.lat]), Rn.geometry, {units:'meters'});
+        const dS=turf.pointToLineDistance(turf.point([f.lon,f.lat]), Rs.geometry, {units:'meters'});
+        const d=Math.min(dN,dS); const route = dN<=dS ? 'Ruta Norte' : 'Ruta Sur';
+        if (d<=50) enRuta.push({...f, dist:d, nearest:route, class:'EN_RUTA'});
+        else if (d<=umbral) proximos.push({...f, dist:d, nearest:route, class:'PROXIMO'});
+      });
+      return {enRuta: enRuta.sort((a,b)=>a.dist-b.dist), proximos: proximos.sort((a,b)=>a.dist-b.dist)};
+    }
+
+    function render(sets) {
+      if (window.__layerEnRuta) map.removeLayer(window.__layerEnRuta);
+      if (window.__layerProx) map.removeLayer(window.__layerProx);
+      const g1=L.layerGroup(); const g2=L.layerGroup();
+      sets.enRuta.forEach(f=> g1.addLayer(mk(f.lat,f.lon, iconHTML('pulse', f.type)).bindPopup('<b>'+f.name+'</b><br/>Tipo: '+f.type+'<br/>Distancia: <b>'+f.dist.toFixed(0)+' m</b> ('+f.class+')<br/>'+f.nearest)));
+      sets.proximos.forEach(f=> g2.addLayer(mk(f.lat,f.lon, iconHTML('ring', f.type)).bindPopup('<b>'+f.name+'</b><br/>Tipo: '+f.type+'<br/>Distancia: <b>'+f.dist.toFixed(0)+' m</b> ('+f.class+')<br/>'+f.nearest)));
+      g1.addTo(map); g2.addTo(map); window.__layerEnRuta=g1; window.__layerProx=g2;
+      const all=sets.enRuta.concat(sets.proximos); window.__receptores=all; populateTable(all);
+    }
+
+    const umbralInit = parseFloat(document.getElementById('umbral').value||'200');
+    render(computeSets(umbralInit));
+
+    document.getElementById('btnAplicar').onclick = ()=>{ const u=parseFloat(document.getElementById('umbral').value||'200'); render(computeSets(u)); };
+    document.getElementById('btnCSV').onclick = ()=>{
+      const head=['#','Nombre','Tipo','Dist_m','Clase','Ruta','Lat','Lon'];
+      const rows=(window.__receptores||[]).map((it,i)=>[i+1,it.name,it.type,Math.round(it.dist),it.class,it.nearest,it.lat,it.lon]);
+      const csv=[head].concat(rows).map(r=>r.join(';')).join('\n');
+      const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='Receptores_en_y_cercanos_SEMAT.csv'; a.click();
+    };
+    document.getElementById('btnKmlN').onclick = ()=> { const kml=kmlFromLine('Ruta Norte', Rn); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([kml],{type:'application/xml'})); a.download='Ruta_Norte_SEMAT.kml'; a.click(); };
+    document.getElementById('btnKmlS').onclick = ()=> { const kml=kmlFromLine('Ruta Sur', Rs); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([kml],{type:'application/xml'})); a.download='Ruta_Sur_SEMAT.kml'; a.click(); };
+  })();
+</script>
+</body>
+</html>
