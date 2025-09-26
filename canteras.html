@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    
+        <script>
+            L_NO_TOUCH = false;
+            L_DISABLE_3D = false;
+        </script>
+    
+    <style>html, body {width: 100%;height: 100%;margin: 0;padding: 0;}</style>
+    <style>#map {position:absolute;top:0;bottom:0;right:0;left:0;}</style>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css"/>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_89cd9f27dbcf4b9e69e87d1d4febe8ca {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+            </style>
+        
+</head>
+<body>
+    
+    
+<div style="position: fixed; bottom: 20px; left: 20px; z-index:9999; background: white; padding: 8px 12px; border:1px solid #999; border-radius:6px; font-size:13px;">
+<b>Leyenda</b><br>
+<span style="color:red;">★</span> Obra<br>
+<span style="color:green;">●</span> Cantera &nbsp;&nbsp; <span style="color:green;">━</span> Ruta canteras<br>
+<span style="color:blue;">●</span> Gravera &nbsp;&nbsp; <span style="color:blue;">━</span> Ruta graveras<br>
+<span style="color:black;">●</span> Gestor/Vertedero &nbsp;&nbsp; <span style="color:black;">━</span> Ruta gestor/vertedero<br>
+<br><i>Chincheta con ID; pop-ups con documentación; rutas con enlace a <b>Google Maps</b>.</i>
+</div>
+    
+            <div class="folium-map" id="map_89cd9f27dbcf4b9e69e87d1d4febe8ca" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_89cd9f27dbcf4b9e69e87d1d4febe8ca = L.map(
+                "map_89cd9f27dbcf4b9e69e87d1d4febe8ca",
+                {
+                    center: [40.517, -3.676],
+                    crs: L.CRS.EPSG3857,
+                    zoom: 10,
+                    zoomControl: true,
+                    preferCanvas: false,
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_c5c7e701f91e1acdc4f45ef5fbfc1799 = L.tileLayer(
+                "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {"attribution": "Data by \u0026copy; \u003ca href=\"http://openstreetmap.org\"\u003eOpenStreetMap\u003c/a\u003e, under \u003ca href=\"http://www.openstreetmap.org/copyright\"\u003eODbL\u003c/a\u003e.", "detectRetina": false, "maxNativeZoom": 18, "maxZoom": 18, "minZoom": 0, "noWrap": false, "opacity": 1, "subdomains": "abc", "tms": false}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var marker_61f03d5f58ab7d6f0dc98fbc20ea18e4 = L.marker(
+                [40.517, -3.676],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var icon_2c32211e9690c904f22f0f87295de715 = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "star", "iconColor": "white", "markerColor": "red", "prefix": "glyphicon"}
+            );
+            marker_61f03d5f58ab7d6f0dc98fbc20ea18e4.setIcon(icon_2c32211e9690c904f22f0f87295de715);
+        
+    
+        var popup_950d2cc8a592c59c75dc46ba30dd050c = L.popup({"maxWidth": 320});
+
+        
+            var html_9bb740d9a27fd23abc1b3e93df4f456e = $(`<div id="html_9bb740d9a27fd23abc1b3e93df4f456e" style="width: 100.0%; height: 100.0%;"><b>Obra NET Las Tablas</b></div>`)[0];
+            popup_950d2cc8a592c59c75dc46ba30dd050c.setContent(html_9bb740d9a27fd23abc1b3e93df4f456e);
+        
+
+        marker_61f03d5f58ab7d6f0dc98fbc20ea18e4.bindPopup(popup_950d2cc8a592c59c75dc46ba30dd050c)
+        ;
+
+        
+    
+    
+            marker_61f03d5f58ab7d6f0dc98fbc20ea18e4.bindTooltip(
+                `<div>
+                     Obra NET Las Tablas
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var marker_8fa15e6d689b82ae0e5d919f53318ffc = L.marker(
+                [40.45, -4.1],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_39cc94e650fbb132e72dd71aaeaafabe = L.divIcon({"className": "empty", "html": "\u003cdiv style=\"width:26px;height:26px;border-radius:13px;background:#e6f4ea;border:2px solid green;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;box-shadow:0 0 3px rgba(0,0,0,0.4)\"\u003eC-1\u003c/div\u003e", "iconAnchor": [14, 14], "iconSize": [28, 28]});
+            marker_8fa15e6d689b82ae0e5d919f53318ffc.setIcon(div_icon_39cc94e650fbb132e72dd71aaeaafabe);
+        
+    
+            marker_8fa15e6d689b82ae0e5d919f53318ffc.bindTooltip(
+                `<div>
+                     C-1 · C-1 La Curva (Navalagamella)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var marker_a62118234c6bb1408a2613644b5f8f06 = L.marker(
+                [40.45, -4.1],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_0b161dbf1fd3ba3c6fff1c696fc4c022 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\u0027font-size:10px;color:#111;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px\u0027\u003eC-1 La Curva (Navalagamella)\u003c/div\u003e", "iconAnchor": [0, -20], "iconSize": [200, 16]});
+            marker_a62118234c6bb1408a2613644b5f8f06.setIcon(div_icon_0b161dbf1fd3ba3c6fff1c696fc4c022);
+        
+    
+            var marker_506f085a3e46182b75616bf4a07765bc = L.marker(
+                [40.45, -4.1],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var icon_c3161a5855e7f67cf43b0cec55de3ad6 = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "none", "iconColor": "white", "markerColor": "green", "prefix": "fa"}
+            );
+            marker_506f085a3e46182b75616bf4a07765bc.setIcon(icon_c3161a5855e7f67cf43b0cec55de3ad6);
+        
+    
+        var popup_b023ffea856951d65b88b3479d0bacb3 = L.popup({"maxWidth": 480});
+
+        
+            var html_7f00983de02a8b735eca37abf4bde129 = $(`<div id="html_7f00983de02a8b735eca37abf4bde129" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>C-1 · C-1 La Curva (Navalagamella)</b><br><i>Cantera</i><br>Granito (zahorras/capa de forma).<br>         <b>Documentación:</b><br>• <a href='https://boe.es/diario_boe/txt.php?id=BOE-B-2003-33074' target='_blank'>BOE – Concesión explotación 'La Curva'</a><br>• <a href='https://www.bocm.es/boletin/CM_Orden_BOCM/2024/10/24/BOCM-20241024-46.PDF' target='_blank'>BOCM – Referencia cantera La Curva</a><br>     </div>     </div>`)[0];
+            popup_b023ffea856951d65b88b3479d0bacb3.setContent(html_7f00983de02a8b735eca37abf4bde129);
+        
+
+        marker_506f085a3e46182b75616bf4a07765bc.bindPopup(popup_b023ffea856951d65b88b3479d0bacb3)
+        ;
+
+        
+    
+    
+            var marker_0abb599665f7b93cb3d10c82c05476cb = L.marker(
+                [40.668, -3.767],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_dd126b0136b31ea801c808750bbde0c7 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\"width:26px;height:26px;border-radius:13px;background:#e6f4ea;border:2px solid green;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;box-shadow:0 0 3px rgba(0,0,0,0.4)\"\u003eC-2\u003c/div\u003e", "iconAnchor": [14, 14], "iconSize": [28, 28]});
+            marker_0abb599665f7b93cb3d10c82c05476cb.setIcon(div_icon_dd126b0136b31ea801c808750bbde0c7);
+        
+    
+            marker_0abb599665f7b93cb3d10c82c05476cb.bindTooltip(
+                `<div>
+                     C-2 · C-2 La Pola (Colmenar Viejo)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var marker_bf62a250754c70f18dc72c90333856c1 = L.marker(
+                [40.668, -3.767],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_45cdfa3687c336e041c0dd5529085e48 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\u0027font-size:10px;color:#111;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px\u0027\u003eC-2 La Pola (Colmenar Viejo)\u003c/div\u003e", "iconAnchor": [0, -20], "iconSize": [200, 16]});
+            marker_bf62a250754c70f18dc72c90333856c1.setIcon(div_icon_45cdfa3687c336e041c0dd5529085e48);
+        
+    
+            var marker_e67433ca4bddba41ee830a0afbed0922 = L.marker(
+                [40.668, -3.767],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var icon_d7c0439a5335b317954e95c2065458ae = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "none", "iconColor": "white", "markerColor": "green", "prefix": "fa"}
+            );
+            marker_e67433ca4bddba41ee830a0afbed0922.setIcon(icon_d7c0439a5335b317954e95c2065458ae);
+        
+    
+        var popup_1caeae0212d53038d3580b2716215c95 = L.popup({"maxWidth": 480});
+
+        
+            var html_88f8ed09ed71931d1b391331aeec07cb = $(`<div id="html_88f8ed09ed71931d1b391331aeec07cb" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>C-2 · C-2 La Pola (Colmenar Viejo)</b><br><i>Cantera</i><br>Granito (balasto/áridos).<br>         <b>Documentación:</b><br>• <a href='https://www.aridosodira.com/actualidad/actualizacion-de-certificados-de-explotaciones-sodira' target='_blank'>Sodira – Certificados CE/CPF</a><br>• <a href='https://www.comunidad.madrid/transparencia/normativa/informacion-publica-proyecto-modificacion-plan-restauracion-del-espacio-natural' target='_blank'>CAM – Información pública/Restauración</a><br>     </div>     </div>`)[0];
+            popup_1caeae0212d53038d3580b2716215c95.setContent(html_88f8ed09ed71931d1b391331aeec07cb);
+        
+
+        marker_e67433ca4bddba41ee830a0afbed0922.bindPopup(popup_1caeae0212d53038d3580b2716215c95)
+        ;
+
+        
+    
+    
+            var marker_7f0b738c571b521d6e3907602aff321c = L.marker(
+                [40.79, -4.41],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_c2bf904d88b29868a7fe2d3a2cb9845f = L.divIcon({"className": "empty", "html": "\u003cdiv style=\"width:26px;height:26px;border-radius:13px;background:#e6f4ea;border:2px solid green;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;box-shadow:0 0 3px rgba(0,0,0,0.4)\"\u003eC-3\u003c/div\u003e", "iconAnchor": [14, 14], "iconSize": [28, 28]});
+            marker_7f0b738c571b521d6e3907602aff321c.setIcon(div_icon_c2bf904d88b29868a7fe2d3a2cb9845f);
+        
+    
+            marker_7f0b738c571b521d6e3907602aff321c.bindTooltip(
+                `<div>
+                     C-3 · C-3 Aldeavieja (Sta. Mª de Cubillo)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var marker_862c707066c77473343fe17b289f4fd1 = L.marker(
+                [40.79, -4.41],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_1aff1f628a7bdaed4b1bbbbf8aa3ba9d = L.divIcon({"className": "empty", "html": "\u003cdiv style=\u0027font-size:10px;color:#111;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px\u0027\u003eC-3 Aldeavieja (Sta. M\u00aa de Cubillo)\u003c/div\u003e", "iconAnchor": [0, -20], "iconSize": [200, 16]});
+            marker_862c707066c77473343fe17b289f4fd1.setIcon(div_icon_1aff1f628a7bdaed4b1bbbbf8aa3ba9d);
+        
+    
+            var marker_b2ee8ef4781fea22bb7cc2acfec41929 = L.marker(
+                [40.79, -4.41],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var icon_873e6f031f589776bc950121fce112ed = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "none", "iconColor": "white", "markerColor": "green", "prefix": "fa"}
+            );
+            marker_b2ee8ef4781fea22bb7cc2acfec41929.setIcon(icon_873e6f031f589776bc950121fce112ed);
+        
+    
+        var popup_2249a468a59414aedfaf48224f789df5 = L.popup({"maxWidth": 480});
+
+        
+            var html_23d8d1a6428e0657e4d2306007f211d8 = $(`<div id="html_23d8d1a6428e0657e4d2306007f211d8" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>C-3 · C-3 Aldeavieja (Sta. Mª de Cubillo)</b><br><i>Cantera</i><br>Granito QS3.<br>         <b>Documentación:</b><br>• <a href='https://cycasa.com/wp-content/uploads/2014/10/CERTIFICADO-CYCASA_CPF.pdf' target='_blank'>CYCASA – Certificado CPR EN 12620 (2+)</a><br>• <a href='https://cycasa.com/cantera/santa-maria-de-cubillo/' target='_blank'>CYCASA – Ficha cantera Aldeavieja</a><br>     </div>     </div>`)[0];
+            popup_2249a468a59414aedfaf48224f789df5.setContent(html_23d8d1a6428e0657e4d2306007f211d8);
+        
+
+        marker_b2ee8ef4781fea22bb7cc2acfec41929.bindPopup(popup_2249a468a59414aedfaf48224f789df5)
+        ;
+
+        
+    
+    
+            var marker_6bdd81923bdbf57500ec7ec913a01783 = L.marker(
+                [40.82, -4.43],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_0ffecdb787af6ab6a44e1d439d1091f9 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\"width:26px;height:26px;border-radius:13px;background:#e6f4ea;border:2px solid green;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;box-shadow:0 0 3px rgba(0,0,0,0.4)\"\u003eC-4\u003c/div\u003e", "iconAnchor": [14, 14], "iconSize": [28, 28]});
+            marker_6bdd81923bdbf57500ec7ec913a01783.setIcon(div_icon_0ffecdb787af6ab6a44e1d439d1091f9);
+        
+    
+            marker_6bdd81923bdbf57500ec7ec913a01783.bindTooltip(
+                `<div>
+                     C-4 · C-4 Hoya de los Toriles (Villacastín)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var marker_3cf7841af12913bc6284beffe0a4b757 = L.marker(
+                [40.82, -4.43],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_dde3b9775dd4d1301cfa0b54a332df59 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\u0027font-size:10px;color:#111;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px\u0027\u003eC-4 Hoya de los Toriles (Villacast\u00edn)\u003c/div\u003e", "iconAnchor": [0, -20], "iconSize": [200, 16]});
+            marker_3cf7841af12913bc6284beffe0a4b757.setIcon(div_icon_dde3b9775dd4d1301cfa0b54a332df59);
+        
+    
+            var marker_f44df71fa0b3b1c13521307335c2da84 = L.marker(
+                [40.82, -4.43],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var icon_747e646167dbd72c31e8e9362cebabfb = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "none", "iconColor": "white", "markerColor": "green", "prefix": "fa"}
+            );
+            marker_f44df71fa0b3b1c13521307335c2da84.setIcon(icon_747e646167dbd72c31e8e9362cebabfb);
+        
+    
+        var popup_6536686af1a65f999fe851e43c168c92 = L.popup({"maxWidth": 480});
+
+        
+            var html_7b0da1bd1be972d5a8af36b3b5a451d3 = $(`<div id="html_7b0da1bd1be972d5a8af36b3b5a451d3" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>C-4 · C-4 Hoya de los Toriles (Villacastín)</b><br><i>Cantera</i><br>Áridos para hormigón y balasto.<br>         <b>Documentación:</b><br>• <a href='https://www.arvisa.net/files/informacion_marcado_ce_balasto_arvisa.pdf' target='_blank'>ARVISA – Marcado CE Balasto (EN 13450)</a><br>• <a href='https://www.arvisa.net/files/informacion_marcado_ce_hormigon_arvisa_1632.pdf' target='_blank'>ARVISA – Marcado CE Áridos Hormigón (EN 12620)</a><br>     </div>     </div>`)[0];
+            popup_6536686af1a65f999fe851e43c168c92.setContent(html_7b0da1bd1be972d5a8af36b3b5a451d3);
+        
+
+        marker_f44df71fa0b3b1c13521307335c2da84.bindPopup(popup_6536686af1a65f999fe851e43c168c92)
+        ;
+
+        
+    
+    
+            var marker_c9101ece6a3d2cd23ec153f8624be292 = L.marker(
+                [40.65, -4.7],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_56694edfc0db28c16981af380f097a3c = L.divIcon({"className": "empty", "html": "\u003cdiv style=\"width:26px;height:26px;border-radius:13px;background:#e6f4ea;border:2px solid green;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;box-shadow:0 0 3px rgba(0,0,0,0.4)\"\u003eC-5\u003c/div\u003e", "iconAnchor": [14, 14], "iconSize": [28, 28]});
+            marker_c9101ece6a3d2cd23ec153f8624be292.setIcon(div_icon_56694edfc0db28c16981af380f097a3c);
+        
+    
+            marker_c9101ece6a3d2cd23ec153f8624be292.bindTooltip(
+                `<div>
+                     C-5 · C-5 Canteras Cuadrado (Tornadizos de Ávila)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var marker_c0976cf110116684e7188c53cf7e105f = L.marker(
+                [40.65, -4.7],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_7cdb719db689de88f826de0bd219cfc7 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\u0027font-size:10px;color:#111;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px\u0027\u003eC-5 Canteras Cuadrado (Tornadizos de \u00c1vila)\u003c/div\u003e", "iconAnchor": [0, -20], "iconSize": [200, 16]});
+            marker_c0976cf110116684e7188c53cf7e105f.setIcon(div_icon_7cdb719db689de88f826de0bd219cfc7);
+        
+    
+            var marker_0d8e5c39731a9f2654cc29198a837d78 = L.marker(
+                [40.65, -4.7],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var icon_82decbd7add93c2e6f87f17d3a0aa3d6 = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "none", "iconColor": "white", "markerColor": "green", "prefix": "fa"}
+            );
+            marker_0d8e5c39731a9f2654cc29198a837d78.setIcon(icon_82decbd7add93c2e6f87f17d3a0aa3d6);
+        
+    
+        var popup_3083f68fd9b4e0b1bc2955c7b9fa8d74 = L.popup({"maxWidth": 480});
+
+        
+            var html_db0e72bd9242ee3b2483555b6fd34e81 = $(`<div id="html_db0e72bd9242ee3b2483555b6fd34e81" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>C-5 · C-5 Canteras Cuadrado (Tornadizos de Ávila)</b><br><i>Cantera</i><br>Granito (balasto).<br>         <b>Documentación:</b><br>• <a href='https://canterascuadrado.com/certificados' target='_blank'>Canteras Cuadrado – Certificados (ISO/CE/ADIF)</a><br>• <a href='https://canterascuadrado.com/certificados/distintivo-de-calidad-adif' target='_blank'>ADIF – Distintivo Balasto</a><br>• <a href='https://www.adif.es/documents/20124/1929734/%C2%ABRegistro%2Bde%2Bproductos%2Bvalidados%C2%BB.pdf/a419b8de-21a5-9a29-f800-57c2e33a1509?download=true' target='_blank'>ADIF – Registro de productos validados</a><br>     </div>     </div>`)[0];
+            popup_3083f68fd9b4e0b1bc2955c7b9fa8d74.setContent(html_db0e72bd9242ee3b2483555b6fd34e81);
+        
+
+        marker_0d8e5c39731a9f2654cc29198a837d78.bindPopup(popup_3083f68fd9b4e0b1bc2955c7b9fa8d74)
+        ;
+
+        
+    
+    
+            var marker_40693e84b561f6964bb71c2386ac4545 = L.marker(
+                [40.273865, -3.519161],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_92e4a70505c925a127db301d3054c7f3 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\"width:26px;height:26px;border-radius:13px;background:#e6eefc;border:2px solid blue;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;box-shadow:0 0 3px rgba(0,0,0,0.4)\"\u003eG-1\u003c/div\u003e", "iconAnchor": [14, 14], "iconSize": [28, 28]});
+            marker_40693e84b561f6964bb71c2386ac4545.setIcon(div_icon_92e4a70505c925a127db301d3054c7f3);
+        
+    
+            marker_40693e84b561f6964bb71c2386ac4545.bindTooltip(
+                `<div>
+                     G-1 · G-1 Sotopajares (San Martín de la Vega)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var marker_46220df56fa4940711109186411af1f3 = L.marker(
+                [40.273865, -3.519161],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_9c6e2272295d1f852892b6474c112ad2 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\u0027font-size:10px;color:#111;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px\u0027\u003eG-1 Sotopajares (San Mart\u00edn de la Vega)\u003c/div\u003e", "iconAnchor": [0, -20], "iconSize": [200, 16]});
+            marker_46220df56fa4940711109186411af1f3.setIcon(div_icon_9c6e2272295d1f852892b6474c112ad2);
+        
+    
+            var marker_d880d15956c23d92ddb5025dfec83d6f = L.marker(
+                [40.273865, -3.519161],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var icon_137ba8d7c4bdd3951da18dac7a0bbf7a = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "none", "iconColor": "white", "markerColor": "blue", "prefix": "fa"}
+            );
+            marker_d880d15956c23d92ddb5025dfec83d6f.setIcon(icon_137ba8d7c4bdd3951da18dac7a0bbf7a);
+        
+    
+        var popup_c1555912c2687e22ba321c602d9ca545 = L.popup({"maxWidth": 480});
+
+        
+            var html_287f755750eb8741266324a48ac4cb53 = $(`<div id="html_287f755750eb8741266324a48ac4cb53" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>G-1 · G-1 Sotopajares (San Martín de la Vega)</b><br><i>Gravera</i><br>Arenas y gravas (zahorras).<br>         <b>Documentación:</b><br>• <a href='https://www.cemex.es/-/cantera-sotopajares' target='_blank'>CEMEX – Cantera Sotopajares</a><br>• <a href='https://static.erpcloud.info/storage/5AB29D924DC100F694D895DD5D7A8F0C/PRODUCT/5A30F89793549B4B653724A1B95D9FAC/ATTACHMENT/big-bag-gravilla--1-tn-00001550.pdf' target='_blank'>DoP/Prestaciones (ej.)</a><br>• <a href='https://www.aggregates-europe.eu/wp-content/uploads/2023/04/Cem.pdf' target='_blank'>UEPG – Biodiversity Action Plan</a><br>     </div>     </div>`)[0];
+            popup_c1555912c2687e22ba321c602d9ca545.setContent(html_287f755750eb8741266324a48ac4cb53);
+        
+
+        marker_d880d15956c23d92ddb5025dfec83d6f.bindPopup(popup_c1555912c2687e22ba321c602d9ca545)
+        ;
+
+        
+    
+    
+            var marker_aaf1b3a9c96d58634ff2b27422d17c87 = L.marker(
+                [40.43, -3.53],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_6101b9f0134d1476d163a2707a967b1e = L.divIcon({"className": "empty", "html": "\u003cdiv style=\"width:26px;height:26px;border-radius:13px;background:#e6eefc;border:2px solid blue;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;box-shadow:0 0 3px rgba(0,0,0,0.4)\"\u003eG-2\u003c/div\u003e", "iconAnchor": [14, 14], "iconSize": [28, 28]});
+            marker_aaf1b3a9c96d58634ff2b27422d17c87.setIcon(div_icon_6101b9f0134d1476d163a2707a967b1e);
+        
+    
+            marker_aaf1b3a9c96d58634ff2b27422d17c87.bindTooltip(
+                `<div>
+                     G-2 · G-2 Fuenpeña (San Fernando de Henares)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var marker_1be78ce6d016d53290981e981693c899 = L.marker(
+                [40.43, -3.53],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_349910c7f511c589c979de20a624efcf = L.divIcon({"className": "empty", "html": "\u003cdiv style=\u0027font-size:10px;color:#111;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px\u0027\u003eG-2 Fuenpe\u00f1a (San Fernando de Henares)\u003c/div\u003e", "iconAnchor": [0, -20], "iconSize": [200, 16]});
+            marker_1be78ce6d016d53290981e981693c899.setIcon(div_icon_349910c7f511c589c979de20a624efcf);
+        
+    
+            var marker_b4849470f5f477a230a9dd0575e138a1 = L.marker(
+                [40.43, -3.53],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var icon_ecfa01839a7fdbde0f7184c8823b004f = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "none", "iconColor": "white", "markerColor": "blue", "prefix": "fa"}
+            );
+            marker_b4849470f5f477a230a9dd0575e138a1.setIcon(icon_ecfa01839a7fdbde0f7184c8823b004f);
+        
+    
+        var popup_fffe68a704d75f318db38bb55bfd8495 = L.popup({"maxWidth": 480});
+
+        
+            var html_e50fc757efc3a6f604c9df0d4a6b4185 = $(`<div id="html_e50fc757efc3a6f604c9df0d4a6b4185" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>G-2 · G-2 Fuenpeña (San Fernando de Henares)</b><br><i>Gravera</i><br>Arenas (rellenos).<br>         <b>Documentación:</b><br>• <a href='https://www.concretonline.com/localizador-de-canteras-graveras/fabricacion-y-transportes-de-aridos-fuenpena-san-fernando-de-henares' target='_blank'>Directorio – Fuenpeña</a><br>• <a href='https://www.einforma.com/informacion-empresa/fabricacion-transportes-aridos-fuenpena' target='_blank'>Ficha empresa</a><br>     </div>     </div>`)[0];
+            popup_fffe68a704d75f318db38bb55bfd8495.setContent(html_e50fc757efc3a6f604c9df0d4a6b4185);
+        
+
+        marker_b4849470f5f477a230a9dd0575e138a1.bindPopup(popup_fffe68a704d75f318db38bb55bfd8495)
+        ;
+
+        
+    
+    
+            var marker_410650992af6fee2c265e6ae0108bf14 = L.marker(
+                [40.31, -3.47],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_f1d0886062813a0efd957ea42cb4aa7c = L.divIcon({"className": "empty", "html": "\u003cdiv style=\"width:26px;height:26px;border-radius:13px;background:#e6eefc;border:2px solid blue;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;box-shadow:0 0 3px rgba(0,0,0,0.4)\"\u003eG-3\u003c/div\u003e", "iconAnchor": [14, 14], "iconSize": [28, 28]});
+            marker_410650992af6fee2c265e6ae0108bf14.setIcon(div_icon_f1d0886062813a0efd957ea42cb4aa7c);
+        
+    
+            marker_410650992af6fee2c265e6ae0108bf14.bindTooltip(
+                `<div>
+                     G-3 · G-3 Román (Arganda del Rey)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var marker_a79f1d388e3bf8c1ad3e9c3c50702cb5 = L.marker(
+                [40.31, -3.47],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_e02a985b64c4a465b0143417556a6840 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\u0027font-size:10px;color:#111;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px\u0027\u003eG-3 Rom\u00e1n (Arganda del Rey)\u003c/div\u003e", "iconAnchor": [0, -20], "iconSize": [200, 16]});
+            marker_a79f1d388e3bf8c1ad3e9c3c50702cb5.setIcon(div_icon_e02a985b64c4a465b0143417556a6840);
+        
+    
+            var marker_a0919c61a731bd9237d8154f2ea69217 = L.marker(
+                [40.31, -3.47],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var icon_933bea52f8e0404bf95b2c49a2b78859 = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "none", "iconColor": "white", "markerColor": "blue", "prefix": "fa"}
+            );
+            marker_a0919c61a731bd9237d8154f2ea69217.setIcon(icon_933bea52f8e0404bf95b2c49a2b78859);
+        
+    
+        var popup_355bdff47e8cad71dffdb1d28784a269 = L.popup({"maxWidth": 480});
+
+        
+            var html_3862786ceb41f2d79db29c39f1226373 = $(`<div id="html_3862786ceb41f2d79db29c39f1226373" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>G-3 · G-3 Román (Arganda del Rey)</b><br><i>Gravera</i><br>Arena y grava.<br>         <b>Documentación:</b><br>• <a href='https://www.aridosodira.com/images/pdf/roman/roman_hormigon.pdf' target='_blank'>Sodira – DoP/Prestaciones (EN 12620)</a><br>• <a href='https://www.aridosodira.com/contacto' target='_blank'>Sodira – Contacto/Localización</a><br>     </div>     </div>`)[0];
+            popup_355bdff47e8cad71dffdb1d28784a269.setContent(html_3862786ceb41f2d79db29c39f1226373);
+        
+
+        marker_a0919c61a731bd9237d8154f2ea69217.bindPopup(popup_355bdff47e8cad71dffdb1d28784a269)
+        ;
+
+        
+    
+    
+            var marker_63eeba93b6fba7b02343dedacc83603b = L.marker(
+                [40.33, -3.49],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_99ba106fdbce7c29ee45c1ada769aa4f = L.divIcon({"className": "empty", "html": "\u003cdiv style=\"width:26px;height:26px;border-radius:13px;background:#e6eefc;border:2px solid blue;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;box-shadow:0 0 3px rgba(0,0,0,0.4)\"\u003eG-4\u003c/div\u003e", "iconAnchor": [14, 14], "iconSize": [28, 28]});
+            marker_63eeba93b6fba7b02343dedacc83603b.setIcon(div_icon_99ba106fdbce7c29ee45c1ada769aa4f);
+        
+    
+            marker_63eeba93b6fba7b02343dedacc83603b.bindTooltip(
+                `<div>
+                     G-4 · G-4 Valdocarros (Velilla/Arganda)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var marker_8140a823a6da559021ae2f295dd27e06 = L.marker(
+                [40.33, -3.49],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_f57bf8c2392da8e1c84ded8cd03c3d08 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\u0027font-size:10px;color:#111;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px\u0027\u003eG-4 Valdocarros (Velilla/Arganda)\u003c/div\u003e", "iconAnchor": [0, -20], "iconSize": [200, 16]});
+            marker_8140a823a6da559021ae2f295dd27e06.setIcon(div_icon_f57bf8c2392da8e1c84ded8cd03c3d08);
+        
+    
+            var marker_4a3a1042dd4ab11b1fc9c982cb0354ff = L.marker(
+                [40.33, -3.49],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var icon_025427e2bf23272be041384fb2036af8 = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "none", "iconColor": "white", "markerColor": "blue", "prefix": "fa"}
+            );
+            marker_4a3a1042dd4ab11b1fc9c982cb0354ff.setIcon(icon_025427e2bf23272be041384fb2036af8);
+        
+    
+        var popup_3bdbf2127c96965497c2966846b2c33b = L.popup({"maxWidth": 480});
+
+        
+            var html_e7325f95f834fade6aae52f1a7426797 = $(`<div id="html_e7325f95f834fade6aae52f1a7426797" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>G-4 · G-4 Valdocarros (Velilla/Arganda)</b><br><i>Gravera</i><br>Áridos / posible VMNE.<br>         <b>Documentación:</b><br>• <a href='https://www.comunidad.madrid/transparencia/autorizacion-explotacion-recursos-seccion-grava-y-arena-denominada-v-ampliacion-valdocarros-no-492' target='_blank'>CAM – Autorización Sección A 'V Ampliación Valdocarros'</a><br>     </div>     </div>`)[0];
+            popup_3bdbf2127c96965497c2966846b2c33b.setContent(html_e7325f95f834fade6aae52f1a7426797);
+        
+
+        marker_4a3a1042dd4ab11b1fc9c982cb0354ff.bindPopup(popup_3bdbf2127c96965497c2966846b2c33b)
+        ;
+
+        
+    
+    
+            var marker_9b513505b4448e4b37784f1368f980bb = L.marker(
+                [40.2, -4.03],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_f27f6ec17342ea0323a2d137210c2b8d = L.divIcon({"className": "empty", "html": "\u003cdiv style=\"width:26px;height:26px;border-radius:13px;background:#e6eefc;border:2px solid blue;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;box-shadow:0 0 3px rgba(0,0,0,0.4)\"\u003eG-5\u003c/div\u003e", "iconAnchor": [14, 14], "iconSize": [28, 28]});
+            marker_9b513505b4448e4b37784f1368f980bb.setIcon(div_icon_f27f6ec17342ea0323a2d137210c2b8d);
+        
+    
+            marker_9b513505b4448e4b37784f1368f980bb.bindTooltip(
+                `<div>
+                     G-5 · G-5 Áridos La Cabeza (Casarrubios del Monte)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var marker_2e0aec81e5fc7ad3dfbf8452af006b6f = L.marker(
+                [40.2, -4.03],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_d577800ce2a8aa9c58042f2ce7dfe671 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\u0027font-size:10px;color:#111;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px\u0027\u003eG-5 \u00c1ridos La Cabeza (Casarrubios del Monte)\u003c/div\u003e", "iconAnchor": [0, -20], "iconSize": [200, 16]});
+            marker_2e0aec81e5fc7ad3dfbf8452af006b6f.setIcon(div_icon_d577800ce2a8aa9c58042f2ce7dfe671);
+        
+    
+            var marker_df9bf8654f6ea2a7e8f0f146de34ddc1 = L.marker(
+                [40.2, -4.03],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var icon_3a95c653607c7e88f03c204a52a7aec8 = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "none", "iconColor": "white", "markerColor": "blue", "prefix": "fa"}
+            );
+            marker_df9bf8654f6ea2a7e8f0f146de34ddc1.setIcon(icon_3a95c653607c7e88f03c204a52a7aec8);
+        
+    
+        var popup_a1494ac4eaded1b5730eee4d717fb8b4 = L.popup({"maxWidth": 480});
+
+        
+            var html_6bd410e041d7a33bfa339df7a41fe9a2 = $(`<div id="html_6bd410e041d7a33bfa339df7a41fe9a2" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>G-5 · G-5 Áridos La Cabeza (Casarrubios del Monte)</b><br><i>Gravera</i><br>Áridos silíceos.<br>         <b>Documentación:</b><br>• <a href='https://www.comunidad.madrid/file/219324/download' target='_blank'>CAM – Inventario explotaciones (coords)</a><br>     </div>     </div>`)[0];
+            popup_a1494ac4eaded1b5730eee4d717fb8b4.setContent(html_6bd410e041d7a33bfa339df7a41fe9a2);
+        
+
+        marker_df9bf8654f6ea2a7e8f0f146de34ddc1.bindPopup(popup_a1494ac4eaded1b5730eee4d717fb8b4)
+        ;
+
+        
+    
+    
+            var marker_a43d25a31a49c1e3236aecd490a9f88d = L.marker(
+                [40.345, -3.687],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_d0f2902e8d2c98ee08ed5ad1d1f2b458 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\"width:26px;height:26px;border-radius:13px;background:#eeeeee;border:2px solid black;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;box-shadow:0 0 3px rgba(0,0,0,0.4)\"\u003eV-1\u003c/div\u003e", "iconAnchor": [14, 14], "iconSize": [28, 28]});
+            marker_a43d25a31a49c1e3236aecd490a9f88d.setIcon(div_icon_d0f2902e8d2c98ee08ed5ad1d1f2b458);
+        
+    
+            marker_a43d25a31a49c1e3236aecd490a9f88d.bindTooltip(
+                `<div>
+                     V-1 · V-1 RCD Madrid (Villaverde)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var marker_bc2f60487ba3bb7b473b8fc5fbbd2b0d = L.marker(
+                [40.345, -3.687],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_45015b6f08b587cfdbfb9242f78c84f8 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\u0027font-size:10px;color:#111;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px\u0027\u003eV-1 RCD Madrid (Villaverde)\u003c/div\u003e", "iconAnchor": [0, -20], "iconSize": [200, 16]});
+            marker_bc2f60487ba3bb7b473b8fc5fbbd2b0d.setIcon(div_icon_45015b6f08b587cfdbfb9242f78c84f8);
+        
+    
+            var marker_c3308f2c61bdb4b75a5702d535a25949 = L.marker(
+                [40.345, -3.687],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var icon_2c71bf66a4ae38bb83aa506c241c1b32 = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "none", "iconColor": "white", "markerColor": "black", "prefix": "fa"}
+            );
+            marker_c3308f2c61bdb4b75a5702d535a25949.setIcon(icon_2c71bf66a4ae38bb83aa506c241c1b32);
+        
+    
+        var popup_b06cafd71ae91e46b63d3e0face13b64 = L.popup({"maxWidth": 480});
+
+        
+            var html_41af5437b7850e931804aef115c0b887 = $(`<div id="html_41af5437b7850e931804aef115c0b887" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>V-1 · V-1 RCD Madrid (Villaverde)</b><br><i>Gestor/Vertedero</i><br>Valorización RCD (R5/R13/D15).<br>         <b>Documentación:</b><br>• <a href='https://gestoresderesiduos.org/manager_centers/rcd-reciclados-de-residuos-madrid-s-l' target='_blank'>NIMA 2800061161 – Ficha</a><br>• <a href='https://www.comunidad.madrid/servicios/urbanismo-medio-ambiente/listados-gestores-transportistas-residuos' target='_blank'>CAM – Listados oficiales de gestores</a><br>     </div>     </div>`)[0];
+            popup_b06cafd71ae91e46b63d3e0face13b64.setContent(html_41af5437b7850e931804aef115c0b887);
+        
+
+        marker_c3308f2c61bdb4b75a5702d535a25949.bindPopup(popup_b06cafd71ae91e46b63d3e0face13b64)
+        ;
+
+        
+    
+    
+            var marker_f661ea4a11fb92220d38d3d922776ba6 = L.marker(
+                [40.541, -3.635],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_a461345a09d55a44c62bccdd4a85abde = L.divIcon({"className": "empty", "html": "\u003cdiv style=\"width:26px;height:26px;border-radius:13px;background:#eeeeee;border:2px solid black;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;box-shadow:0 0 3px rgba(0,0,0,0.4)\"\u003eV-2\u003c/div\u003e", "iconAnchor": [14, 14], "iconSize": [28, 28]});
+            marker_f661ea4a11fb92220d38d3d922776ba6.setIcon(div_icon_a461345a09d55a44c62bccdd4a85abde);
+        
+    
+            marker_f661ea4a11fb92220d38d3d922776ba6.bindTooltip(
+                `<div>
+                     V-2 · V-2 TRYOB Obras y Servicios (Alcobendas)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var marker_07846415f7f55fbe529107fedca14979 = L.marker(
+                [40.541, -3.635],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_7e15accfe8fa24a0057b688ccfe93451 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\u0027font-size:10px;color:#111;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px\u0027\u003eV-2 TRYOB Obras y Servicios (Alcobendas)\u003c/div\u003e", "iconAnchor": [0, -20], "iconSize": [200, 16]});
+            marker_07846415f7f55fbe529107fedca14979.setIcon(div_icon_7e15accfe8fa24a0057b688ccfe93451);
+        
+    
+            var marker_6988a6ff2c6aabd5cdee9d5ad2080753 = L.marker(
+                [40.541, -3.635],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var icon_a0cc4e12f9786da1e86acc27f7572f11 = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "none", "iconColor": "white", "markerColor": "black", "prefix": "fa"}
+            );
+            marker_6988a6ff2c6aabd5cdee9d5ad2080753.setIcon(icon_a0cc4e12f9786da1e86acc27f7572f11);
+        
+    
+        var popup_cc2f89e607700f15d30af6be0ac872e0 = L.popup({"maxWidth": 480});
+
+        
+            var html_96010d52fbbe2fe221e6aa82fa3ce5f7 = $(`<div id="html_96010d52fbbe2fe221e6aa82fa3ce5f7" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>V-2 · V-2 TRYOB Obras y Servicios (Alcobendas)</b><br><i>Gestor/Vertedero</i><br>Clasificación/almacenamiento RCD (Nivel II).<br>         <b>Documentación:</b><br>• <a href='https://www.comunidad.madrid/sites/default/files/doc/medio-ambiente/listado_de_gestores_de_residuos_no_peligrosos.pdf' target='_blank'>CAM – Listado gestores RNP (TRYOB)</a><br>• <a href='https://www.comunidad.madrid/servicios/urbanismo-medio-ambiente/listados-gestores-transportistas-residuos' target='_blank'>CAM – Listados gestores/transportistas (portal)</a><br>• <a href='https://tryobsaambiental.com/' target='_blank'>TRYOB – Gestor RCD autorizado</a><br>     </div>     </div>`)[0];
+            popup_cc2f89e607700f15d30af6be0ac872e0.setContent(html_96010d52fbbe2fe221e6aa82fa3ce5f7);
+        
+
+        marker_6988a6ff2c6aabd5cdee9d5ad2080753.bindPopup(popup_cc2f89e607700f15d30af6be0ac872e0)
+        ;
+
+        
+    
+    
+            var marker_9438da57f89e0ecff304ef44e5631f70 = L.marker(
+                [40.27, -3.826],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_3e4e2e4c8e33657544e1b6bb4d58a915 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\"width:26px;height:26px;border-radius:13px;background:#eeeeee;border:2px solid black;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;box-shadow:0 0 3px rgba(0,0,0,0.4)\"\u003eV-3\u003c/div\u003e", "iconAnchor": [14, 14], "iconSize": [28, 28]});
+            marker_9438da57f89e0ecff304ef44e5631f70.setIcon(div_icon_3e4e2e4c8e33657544e1b6bb4d58a915);
+        
+    
+            marker_9438da57f89e0ecff304ef44e5631f70.bindTooltip(
+                `<div>
+                     V-3 · V-3 CONSTRA, S.A. (Humanes de Madrid)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var marker_ffc27cec811b78de50fae681d4bd29be = L.marker(
+                [40.27, -3.826],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_38214e9619ba28fdf08bafad25d55201 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\u0027font-size:10px;color:#111;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px\u0027\u003eV-3 CONSTRA, S.A. (Humanes de Madrid)\u003c/div\u003e", "iconAnchor": [0, -20], "iconSize": [200, 16]});
+            marker_ffc27cec811b78de50fae681d4bd29be.setIcon(div_icon_38214e9619ba28fdf08bafad25d55201);
+        
+    
+            var marker_a470a7e3dd451ee53273bfd91ce57eb2 = L.marker(
+                [40.27, -3.826],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var icon_ce23a1020023e0378c7e3ea06a62e0ea = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "none", "iconColor": "white", "markerColor": "black", "prefix": "fa"}
+            );
+            marker_a470a7e3dd451ee53273bfd91ce57eb2.setIcon(icon_ce23a1020023e0378c7e3ea06a62e0ea);
+        
+    
+        var popup_e10a58006195ca839d5bcb27d9db73ed = L.popup({"maxWidth": 480});
+
+        
+            var html_a08b116ee9a09f398f095e76f0840f67 = $(`<div id="html_a08b116ee9a09f398f095e76f0840f67" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>V-3 · V-3 CONSTRA, S.A. (Humanes de Madrid)</b><br><i>Gestor/Vertedero</i><br>RCD Nivel I/II.<br>         <b>Documentación:</b><br>• <a href='https://www.comunidad.madrid/sites/default/files/doc/medio-ambiente/listado_gestores_residuos_de_construccion_y_demolicion_0_1.pdf' target='_blank'>CAM – Listado gestores RCD (incluye NIMA 2800018711)</a><br>• <a href='https://contrataciondelestado.es/wps/wcm/connect/a94fe0f0-ab14-4343-84b4-d5327818d6d7/DOC20180904141811Anejo%2B14.pdf?MOD=AJPERES' target='_blank'>Anejo público – referencia NIMA 2800018711</a><br>• <a href='https://www.residuos.com/gestores/contra-sa.html' target='_blank'>Directorio – ficha CONSTRA</a><br>     </div>     </div>`)[0];
+            popup_e10a58006195ca839d5bcb27d9db73ed.setContent(html_a08b116ee9a09f398f095e76f0840f67);
+        
+
+        marker_a470a7e3dd451ee53273bfd91ce57eb2.bindPopup(popup_e10a58006195ca839d5bcb27d9db73ed)
+        ;
+
+        
+    
+    
+            var marker_313a077928e3d6eb02e4264147eb3601 = L.marker(
+                [40.3, -3.45],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_1630af130820a0cbf88e243aaf985026 = L.divIcon({"className": "empty", "html": "\u003cdiv style=\"width:26px;height:26px;border-radius:13px;background:#eeeeee;border:2px solid black;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;box-shadow:0 0 3px rgba(0,0,0,0.4)\"\u003eV-4\u003c/div\u003e", "iconAnchor": [14, 14], "iconSize": [28, 28]});
+            marker_313a077928e3d6eb02e4264147eb3601.setIcon(div_icon_1630af130820a0cbf88e243aaf985026);
+        
+    
+            marker_313a077928e3d6eb02e4264147eb3601.bindTooltip(
+                `<div>
+                     V-4 · V-4 VIRTON, S.A. (Arganda del Rey)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var marker_4c5ceaf09d2db5990fb5aa3899d6da6d = L.marker(
+                [40.3, -3.45],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var div_icon_e0f1bf7335b12938ab559c0e6c4e53dc = L.divIcon({"className": "empty", "html": "\u003cdiv style=\u0027font-size:10px;color:#111;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px\u0027\u003eV-4 VIRTON, S.A. (Arganda del Rey)\u003c/div\u003e", "iconAnchor": [0, -20], "iconSize": [200, 16]});
+            marker_4c5ceaf09d2db5990fb5aa3899d6da6d.setIcon(div_icon_e0f1bf7335b12938ab559c0e6c4e53dc);
+        
+    
+            var marker_d816dcc76805da824748120a91c119c0 = L.marker(
+                [40.3, -3.45],
+                {}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+            var icon_18145436bdad6630a641778616f59c61 = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "none", "iconColor": "white", "markerColor": "black", "prefix": "fa"}
+            );
+            marker_d816dcc76805da824748120a91c119c0.setIcon(icon_18145436bdad6630a641778616f59c61);
+        
+    
+        var popup_aa88f931d3f0351b09b561d4ae81eb68 = L.popup({"maxWidth": 480});
+
+        
+            var html_8c16da3c78dffabc0bc6d7cbcd67157b = $(`<div id="html_8c16da3c78dffabc0bc6d7cbcd67157b" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>V-4 · V-4 VIRTON, S.A. (Arganda del Rey)</b><br><i>Gestor/Vertedero</i><br>Valorización RCD.<br>         <b>Documentación:</b><br>• <a href='https://www.comunidad.madrid/sites/default/files/doc/medio-ambiente/listado_gestores_residuos_de_construccion_y_demolicion_0_20.pdf' target='_blank'>CAM – Listado gestores RCD (Arganda, NIMA 28…)</a><br>• <a href='https://www.comunidad.madrid/servicios/urbanismo-medio-ambiente/listados-gestores-transportistas-residuos' target='_blank'>Portal CAM – Listados gestores</a><br>     </div>     </div>`)[0];
+            popup_aa88f931d3f0351b09b561d4ae81eb68.setContent(html_8c16da3c78dffabc0bc6d7cbcd67157b);
+        
+
+        marker_d816dcc76805da824748120a91c119c0.bindPopup(popup_aa88f931d3f0351b09b561d4ae81eb68)
+        ;
+
+        
+    
+    
+            var poly_line_46cecb145303ec1ee7592d32110956fa = L.polyline(
+                [[40.517, -3.676], [40.474, -3.727], [40.466, -3.853], [40.48, -3.975], [40.45, -4.1]],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "green", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 3.5}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+        var popup_ee07269f48c62131fba5da8d24099c1e = L.popup({"maxWidth": 420});
+
+        
+            var html_5c54f16d589bf7670afee03c6e70be2b = $(`<div id="html_5c54f16d589bf7670afee03c6e70be2b" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>Ruta sugerida:</b> Obra NET Las Tablas → C-1 C-1 La Curva (Navalagamella)<br>         <a href="https://www.google.com/maps/dir/?api=1&origin=40.517,-3.676&destination=40.45,-4.1&travelmode=driving&waypoints=40.474,-3.727|40.466,-3.853|40.48,-3.975" target="_blank"><b>Ver indicaciones paso a paso</b></a>     </div></div>`)[0];
+            popup_ee07269f48c62131fba5da8d24099c1e.setContent(html_5c54f16d589bf7670afee03c6e70be2b);
+        
+
+        poly_line_46cecb145303ec1ee7592d32110956fa.bindPopup(popup_ee07269f48c62131fba5da8d24099c1e)
+        ;
+
+        
+    
+    
+            poly_line_46cecb145303ec1ee7592d32110956fa.bindTooltip(
+                `<div>
+                     Ruta a C-1 C-1 La Curva (Navalagamella)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var poly_line_838fd12d85157f3c48c5009537b1943b = L.polyline(
+                [[40.517, -3.676], [40.56, -3.695], [40.604, -3.712], [40.668, -3.767]],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "green", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 3.5}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+        var popup_dc36024d4ead009b7383540a27afe4d2 = L.popup({"maxWidth": 420});
+
+        
+            var html_b4fa59fac34301bdaf3e9a9cf214fd09 = $(`<div id="html_b4fa59fac34301bdaf3e9a9cf214fd09" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>Ruta sugerida:</b> Obra NET Las Tablas → C-2 C-2 La Pola (Colmenar Viejo)<br>         <a href="https://www.google.com/maps/dir/?api=1&origin=40.517,-3.676&destination=40.668,-3.767&travelmode=driving&waypoints=40.56,-3.695|40.604,-3.712" target="_blank"><b>Ver indicaciones paso a paso</b></a>     </div></div>`)[0];
+            popup_dc36024d4ead009b7383540a27afe4d2.setContent(html_b4fa59fac34301bdaf3e9a9cf214fd09);
+        
+
+        poly_line_838fd12d85157f3c48c5009537b1943b.bindPopup(popup_dc36024d4ead009b7383540a27afe4d2)
+        ;
+
+        
+    
+    
+            poly_line_838fd12d85157f3c48c5009537b1943b.bindTooltip(
+                `<div>
+                     Ruta a C-2 C-2 La Pola (Colmenar Viejo)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var poly_line_940fde1606b85d2ca5e9a93e2d261b1e = L.polyline(
+                [[40.517, -3.676], [40.474, -3.727], [40.466, -3.853], [40.79, -4.41]],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "green", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 3.5}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+        var popup_2d2f7d65bfcf3a981cabcbb5a354945f = L.popup({"maxWidth": 420});
+
+        
+            var html_ad22d723e1047483a337e03f28e8c42e = $(`<div id="html_ad22d723e1047483a337e03f28e8c42e" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>Ruta sugerida:</b> Obra NET Las Tablas → C-3 C-3 Aldeavieja (Sta. Mª de Cubillo)<br>         <a href="https://www.google.com/maps/dir/?api=1&origin=40.517,-3.676&destination=40.79,-4.41&travelmode=driving&waypoints=40.474,-3.727|40.466,-3.853" target="_blank"><b>Ver indicaciones paso a paso</b></a>     </div></div>`)[0];
+            popup_2d2f7d65bfcf3a981cabcbb5a354945f.setContent(html_ad22d723e1047483a337e03f28e8c42e);
+        
+
+        poly_line_940fde1606b85d2ca5e9a93e2d261b1e.bindPopup(popup_2d2f7d65bfcf3a981cabcbb5a354945f)
+        ;
+
+        
+    
+    
+            poly_line_940fde1606b85d2ca5e9a93e2d261b1e.bindTooltip(
+                `<div>
+                     Ruta a C-3 C-3 Aldeavieja (Sta. Mª de Cubillo)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var poly_line_fa3122290c15c6942e95ad2ef277f60a = L.polyline(
+                [[40.517, -3.676], [40.56, -3.695], [40.63, -3.9], [40.755, -4.1], [40.82, -4.43]],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "green", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 3.5}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+        var popup_e97ec9ad341c9153549c0fe917ff35c2 = L.popup({"maxWidth": 420});
+
+        
+            var html_94eb12db2e4d158bdf1c456dfa5793de = $(`<div id="html_94eb12db2e4d158bdf1c456dfa5793de" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>Ruta sugerida:</b> Obra NET Las Tablas → C-4 C-4 Hoya de los Toriles (Villacastín)<br>         <a href="https://www.google.com/maps/dir/?api=1&origin=40.517,-3.676&destination=40.82,-4.43&travelmode=driving&waypoints=40.56,-3.695|40.63,-3.9|40.755,-4.1" target="_blank"><b>Ver indicaciones paso a paso</b></a>     </div></div>`)[0];
+            popup_e97ec9ad341c9153549c0fe917ff35c2.setContent(html_94eb12db2e4d158bdf1c456dfa5793de);
+        
+
+        poly_line_fa3122290c15c6942e95ad2ef277f60a.bindPopup(popup_e97ec9ad341c9153549c0fe917ff35c2)
+        ;
+
+        
+    
+    
+            poly_line_fa3122290c15c6942e95ad2ef277f60a.bindTooltip(
+                `<div>
+                     Ruta a C-4 C-4 Hoya de los Toriles (Villacastín)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var poly_line_0ed39225de8dafa854c958e030d967ff = L.polyline(
+                [[40.517, -3.676], [40.56, -3.695], [40.63, -3.9], [40.72, -4.25], [40.63, -4.42], [40.65, -4.7]],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "green", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 3.5}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+        var popup_d0311d6836f75064b8d04987ae444a5b = L.popup({"maxWidth": 420});
+
+        
+            var html_d9054ef15aaa1c67edbfd1a3deab0756 = $(`<div id="html_d9054ef15aaa1c67edbfd1a3deab0756" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>Ruta sugerida:</b> Obra NET Las Tablas → C-5 C-5 Canteras Cuadrado (Tornadizos de Ávila)<br>         <a href="https://www.google.com/maps/dir/?api=1&origin=40.517,-3.676&destination=40.65,-4.7&travelmode=driving&waypoints=40.56,-3.695|40.63,-3.9|40.72,-4.25|40.63,-4.42" target="_blank"><b>Ver indicaciones paso a paso</b></a>     </div></div>`)[0];
+            popup_d0311d6836f75064b8d04987ae444a5b.setContent(html_d9054ef15aaa1c67edbfd1a3deab0756);
+        
+
+        poly_line_0ed39225de8dafa854c958e030d967ff.bindPopup(popup_d0311d6836f75064b8d04987ae444a5b)
+        ;
+
+        
+    
+    
+            poly_line_0ed39225de8dafa854c958e030d967ff.bindTooltip(
+                `<div>
+                     Ruta a C-5 C-5 Canteras Cuadrado (Tornadizos de Ávila)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var poly_line_854fa03a14b87b504031bea931eddabd = L.polyline(
+                [[40.517, -3.676], [40.475, -3.69], [40.4, -3.69], [40.349, -3.65], [40.273865, -3.519161]],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "blue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 3.5}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+        var popup_53f8b88da1955e2bdd4100f7f76a9605 = L.popup({"maxWidth": 420});
+
+        
+            var html_21ce4a303fe30f98f4981e5bc06e356a = $(`<div id="html_21ce4a303fe30f98f4981e5bc06e356a" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>Ruta sugerida:</b> Obra NET Las Tablas → G-1 G-1 Sotopajares (San Martín de la Vega)<br>         <a href="https://www.google.com/maps/dir/?api=1&origin=40.517,-3.676&destination=40.273865,-3.519161&travelmode=driving&waypoints=40.475,-3.69|40.4,-3.69|40.349,-3.65" target="_blank"><b>Ver indicaciones paso a paso</b></a>     </div></div>`)[0];
+            popup_53f8b88da1955e2bdd4100f7f76a9605.setContent(html_21ce4a303fe30f98f4981e5bc06e356a);
+        
+
+        poly_line_854fa03a14b87b504031bea931eddabd.bindPopup(popup_53f8b88da1955e2bdd4100f7f76a9605)
+        ;
+
+        
+    
+    
+            poly_line_854fa03a14b87b504031bea931eddabd.bindTooltip(
+                `<div>
+                     Ruta a G-1 G-1 Sotopajares (San Martín de la Vega)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var poly_line_90ea6f17c03399b8512e0d930837994d = L.polyline(
+                [[40.517, -3.676], [40.485, -3.63], [40.455, -3.585], [40.43, -3.53]],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "blue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 3.5}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+        var popup_28aab7f94f3d315a6143eee81789d58f = L.popup({"maxWidth": 420});
+
+        
+            var html_64cb65f4effdc5e37e5e5f9cc1321bc8 = $(`<div id="html_64cb65f4effdc5e37e5e5f9cc1321bc8" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>Ruta sugerida:</b> Obra NET Las Tablas → G-2 G-2 Fuenpeña (San Fernando de Henares)<br>         <a href="https://www.google.com/maps/dir/?api=1&origin=40.517,-3.676&destination=40.43,-3.53&travelmode=driving&waypoints=40.485,-3.63|40.455,-3.585" target="_blank"><b>Ver indicaciones paso a paso</b></a>     </div></div>`)[0];
+            popup_28aab7f94f3d315a6143eee81789d58f.setContent(html_64cb65f4effdc5e37e5e5f9cc1321bc8);
+        
+
+        poly_line_90ea6f17c03399b8512e0d930837994d.bindPopup(popup_28aab7f94f3d315a6143eee81789d58f)
+        ;
+
+        
+    
+    
+            poly_line_90ea6f17c03399b8512e0d930837994d.bindTooltip(
+                `<div>
+                     Ruta a G-2 G-2 Fuenpeña (San Fernando de Henares)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var poly_line_48c5693250dc95084ccc8f2cc9596b71 = L.polyline(
+                [[40.517, -3.676], [40.485, -3.64], [40.41, -3.61], [40.355, -3.56], [40.31, -3.47]],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "blue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 3.5}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+        var popup_8432a2abc97d1b9c8e1787c2304d6b29 = L.popup({"maxWidth": 420});
+
+        
+            var html_23b25ab4f9e4f421793b864c0aa4a0f5 = $(`<div id="html_23b25ab4f9e4f421793b864c0aa4a0f5" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>Ruta sugerida:</b> Obra NET Las Tablas → G-3 G-3 Román (Arganda del Rey)<br>         <a href="https://www.google.com/maps/dir/?api=1&origin=40.517,-3.676&destination=40.31,-3.47&travelmode=driving&waypoints=40.485,-3.64|40.41,-3.61|40.355,-3.56" target="_blank"><b>Ver indicaciones paso a paso</b></a>     </div></div>`)[0];
+            popup_8432a2abc97d1b9c8e1787c2304d6b29.setContent(html_23b25ab4f9e4f421793b864c0aa4a0f5);
+        
+
+        poly_line_48c5693250dc95084ccc8f2cc9596b71.bindPopup(popup_8432a2abc97d1b9c8e1787c2304d6b29)
+        ;
+
+        
+    
+    
+            poly_line_48c5693250dc95084ccc8f2cc9596b71.bindTooltip(
+                `<div>
+                     Ruta a G-3 G-3 Román (Arganda del Rey)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var poly_line_8c8fcd9f76394632e782f72cf84d098f = L.polyline(
+                [[40.517, -3.676], [40.485, -3.64], [40.41, -3.61], [40.37, -3.58], [40.33, -3.49]],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "blue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 3.5}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+        var popup_8c313852a40b1672c261dc353abeb291 = L.popup({"maxWidth": 420});
+
+        
+            var html_9018c6f88f588332819c3d706d9dba2d = $(`<div id="html_9018c6f88f588332819c3d706d9dba2d" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>Ruta sugerida:</b> Obra NET Las Tablas → G-4 G-4 Valdocarros (Velilla/Arganda)<br>         <a href="https://www.google.com/maps/dir/?api=1&origin=40.517,-3.676&destination=40.33,-3.49&travelmode=driving&waypoints=40.485,-3.64|40.41,-3.61|40.37,-3.58" target="_blank"><b>Ver indicaciones paso a paso</b></a>     </div></div>`)[0];
+            popup_8c313852a40b1672c261dc353abeb291.setContent(html_9018c6f88f588332819c3d706d9dba2d);
+        
+
+        poly_line_8c8fcd9f76394632e782f72cf84d098f.bindPopup(popup_8c313852a40b1672c261dc353abeb291)
+        ;
+
+        
+    
+    
+            poly_line_8c8fcd9f76394632e782f72cf84d098f.bindTooltip(
+                `<div>
+                     Ruta a G-4 G-4 Valdocarros (Velilla/Arganda)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var poly_line_7ebd65877d04b5cc1a79b14044ec4669 = L.polyline(
+                [[40.517, -3.676], [40.46, -3.74], [40.41, -3.85], [40.2, -4.03]],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "blue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 3.5}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+        var popup_588d88929cd947e4e18bb1c7c605c859 = L.popup({"maxWidth": 420});
+
+        
+            var html_98b4b7c867648918eb28bdeffdb845af = $(`<div id="html_98b4b7c867648918eb28bdeffdb845af" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>Ruta sugerida:</b> Obra NET Las Tablas → G-5 G-5 Áridos La Cabeza (Casarrubios del Monte)<br>         <a href="https://www.google.com/maps/dir/?api=1&origin=40.517,-3.676&destination=40.2,-4.03&travelmode=driving&waypoints=40.46,-3.74|40.41,-3.85" target="_blank"><b>Ver indicaciones paso a paso</b></a>     </div></div>`)[0];
+            popup_588d88929cd947e4e18bb1c7c605c859.setContent(html_98b4b7c867648918eb28bdeffdb845af);
+        
+
+        poly_line_7ebd65877d04b5cc1a79b14044ec4669.bindPopup(popup_588d88929cd947e4e18bb1c7c605c859)
+        ;
+
+        
+    
+    
+            poly_line_7ebd65877d04b5cc1a79b14044ec4669.bindTooltip(
+                `<div>
+                     Ruta a G-5 G-5 Áridos La Cabeza (Casarrubios del Monte)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var poly_line_91ce60ca669dedf66e4bc3fc30142319 = L.polyline(
+                [[40.517, -3.676], [40.48, -3.7], [40.42, -3.7], [40.345, -3.687]],
+                {"bubblingMouseEvents": true, "color": "black", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "black", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 3.5}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+        var popup_e6167e127f0ac920860e886b3f0f01de = L.popup({"maxWidth": 420});
+
+        
+            var html_345dc10e70c2bdc29a8d155cea64f853 = $(`<div id="html_345dc10e70c2bdc29a8d155cea64f853" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>Ruta sugerida:</b> Obra NET Las Tablas → V-1 V-1 RCD Madrid (Villaverde)<br>         <a href="https://www.google.com/maps/dir/?api=1&origin=40.517,-3.676&destination=40.345,-3.687&travelmode=driving&waypoints=40.48,-3.7|40.42,-3.7" target="_blank"><b>Ver indicaciones paso a paso</b></a>     </div></div>`)[0];
+            popup_e6167e127f0ac920860e886b3f0f01de.setContent(html_345dc10e70c2bdc29a8d155cea64f853);
+        
+
+        poly_line_91ce60ca669dedf66e4bc3fc30142319.bindPopup(popup_e6167e127f0ac920860e886b3f0f01de)
+        ;
+
+        
+    
+    
+            poly_line_91ce60ca669dedf66e4bc3fc30142319.bindTooltip(
+                `<div>
+                     Ruta a V-1 V-1 RCD Madrid (Villaverde)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var poly_line_b30b5695e846c0157dbc6ec9c65d30ca = L.polyline(
+                [[40.517, -3.676], [40.56, -3.695], [40.604, -3.712], [40.541, -3.635]],
+                {"bubblingMouseEvents": true, "color": "black", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "black", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 3.5}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+        var popup_a393dc128c32c88b257585cdb80d6db5 = L.popup({"maxWidth": 420});
+
+        
+            var html_c6e80adcb69eccbac7ed14ddcae53d9e = $(`<div id="html_c6e80adcb69eccbac7ed14ddcae53d9e" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>Ruta sugerida:</b> Obra NET Las Tablas → V-2 V-2 TRYOB Obras y Servicios (Alcobendas)<br>         <a href="https://www.google.com/maps/dir/?api=1&origin=40.517,-3.676&destination=40.541,-3.635&travelmode=driving&waypoints=40.56,-3.695|40.604,-3.712" target="_blank"><b>Ver indicaciones paso a paso</b></a>     </div></div>`)[0];
+            popup_a393dc128c32c88b257585cdb80d6db5.setContent(html_c6e80adcb69eccbac7ed14ddcae53d9e);
+        
+
+        poly_line_b30b5695e846c0157dbc6ec9c65d30ca.bindPopup(popup_a393dc128c32c88b257585cdb80d6db5)
+        ;
+
+        
+    
+    
+            poly_line_b30b5695e846c0157dbc6ec9c65d30ca.bindTooltip(
+                `<div>
+                     Ruta a V-2 V-2 TRYOB Obras y Servicios (Alcobendas)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var poly_line_05e07d546ec1d5956a137c64f24c9f59 = L.polyline(
+                [[40.517, -3.676], [40.46, -3.74], [40.41, -3.85], [40.27, -3.826]],
+                {"bubblingMouseEvents": true, "color": "black", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "black", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 3.5}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+        var popup_e152e4de1a12d831493c294396640637 = L.popup({"maxWidth": 420});
+
+        
+            var html_79a27c9c1a37fbf60aa2d167f7d84040 = $(`<div id="html_79a27c9c1a37fbf60aa2d167f7d84040" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>Ruta sugerida:</b> Obra NET Las Tablas → V-3 V-3 CONSTRA, S.A. (Humanes de Madrid)<br>         <a href="https://www.google.com/maps/dir/?api=1&origin=40.517,-3.676&destination=40.27,-3.826&travelmode=driving&waypoints=40.46,-3.74|40.41,-3.85" target="_blank"><b>Ver indicaciones paso a paso</b></a>     </div></div>`)[0];
+            popup_e152e4de1a12d831493c294396640637.setContent(html_79a27c9c1a37fbf60aa2d167f7d84040);
+        
+
+        poly_line_05e07d546ec1d5956a137c64f24c9f59.bindPopup(popup_e152e4de1a12d831493c294396640637)
+        ;
+
+        
+    
+    
+            poly_line_05e07d546ec1d5956a137c64f24c9f59.bindTooltip(
+                `<div>
+                     Ruta a V-3 V-3 CONSTRA, S.A. (Humanes de Madrid)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var poly_line_1de3e371cf0ae748f4a4180dc9817cef = L.polyline(
+                [[40.517, -3.676], [40.485, -3.64], [40.41, -3.61], [40.3, -3.45]],
+                {"bubblingMouseEvents": true, "color": "black", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "black", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 3.5}
+            ).addTo(map_89cd9f27dbcf4b9e69e87d1d4febe8ca);
+        
+    
+        var popup_f6b014d2eb7b6d00e2dc0f4b4db14474 = L.popup({"maxWidth": 420});
+
+        
+            var html_bfc4c29b4f01464e409fa155668a6492 = $(`<div id="html_bfc4c29b4f01464e409fa155668a6492" style="width: 100.0%; height: 100.0%;">     <div style='font-size:12px'>         <b>Ruta sugerida:</b> Obra NET Las Tablas → V-4 V-4 VIRTON, S.A. (Arganda del Rey)<br>         <a href="https://www.google.com/maps/dir/?api=1&origin=40.517,-3.676&destination=40.3,-3.45&travelmode=driving&waypoints=40.485,-3.64|40.41,-3.61" target="_blank"><b>Ver indicaciones paso a paso</b></a>     </div></div>`)[0];
+            popup_f6b014d2eb7b6d00e2dc0f4b4db14474.setContent(html_bfc4c29b4f01464e409fa155668a6492);
+        
+
+        poly_line_1de3e371cf0ae748f4a4180dc9817cef.bindPopup(popup_f6b014d2eb7b6d00e2dc0f4b4db14474)
+        ;
+
+        
+    
+    
+            poly_line_1de3e371cf0ae748f4a4180dc9817cef.bindTooltip(
+                `<div>
+                     Ruta a V-4 V-4 VIRTON, S.A. (Arganda del Rey)
+                 </div>`,
+                {"sticky": true}
+            );
+        
+</script>
+</html>
