@@ -641,38 +641,47 @@ function waitFor(testFn, timeoutMs=8000){
     companySeenBySheet.clear();
   }
 
-  function addPoint({sheet, group, company, place, coord}){
-    const pinColor = colorForGroup(sheet, group);
-    function popupHtml(){
-      const km = haversineKm(ORIGIN.lat, ORIGIN.lng, coord.lat, coord.lng);
-      const kmTxt = (km >= 100) ? `${km.toFixed(0)} km` : `${km.toFixed(1)} km`;
-      const url = gmapsDirUrl(coord.lat, coord.lng);
-      const uniquePdf = selectUniquePdfForCompany(company);
-      const pdfLinks = uniquePdf
-        ? `<ul style="margin:4px 0 0 16px;padding:0"><li style="margin:2px 0"><a href="${uniquePdf.url}" target="_blank" rel="noopener">📄 ${uniquePdf.name}</a></li></ul>`
-        : `<span style="color:#999">Sin PDF asociado</span>`;
-      return `
-        <div style="font:14px Arial;max-width:480px">
-          <h3 style="margin:0 0 4px 0;font-size:16px">${company}</h3>
-          <div style="font-size:12px;color:#444;margin:4px 0">Hoja: <b>${sheet}</b> · Grupo: <b>${group}</b></div>
-          <div style="font-size:12px;color:#666">Posición: ${place}</div>
-          <div style="font-size:12px;color:#111;margin-top:6px">Distancia a obra: <b>${kmTxt}</b></div>
-          <div style="margin-top:6px"><a href="${url}" target="_blank" rel="noopener" style="font-size:12px;">🧭 Ver ruta en Google&nbsp;Maps</a></div>
-          <div style="font-size:12px;color:#111;margin-top:8px">Carta de compromiso:</div>
-          ${pdfLinks}
-          <div style="font-size:11px;color:#666;margin-top:8px">Coord: ${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}</div>
-        </div>`;
-    }
+function addPoint({sheet, group, company, place, coord, pdfName}){
+  const pinColor = colorForGroup(sheet, group);
 
-    const popup = L.popup({autoPan:true, closeButton:true});
-    const marker = L.marker([coord.lat, coord.lng], {icon: markerIcon(pinColor)});
-    marker.bindPopup(popup).addTo(map);
+  function popupHtml(){
+    const km = haversineKm(ORIGIN.lat, ORIGIN.lng, coord.lat, coord.lng);
+    const kmTxt = (km >= 100) ? `${km.toFixed(0)} km` : `${km.toFixed(1)} km`;
+    const url = gmapsDirUrl(coord.lat, coord.lng);
 
-    const id = `pt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    marker.on('popupopen', ()=>{ popup.setContent(popupHtml()); });
+    // ✅ PDF directo desde columna D
+    const pdfLink = (pdfName && pdfName.toLowerCase().endsWith('.pdf'))
+      ? `<ul style="margin:4px 0 0 16px;padding:0">
+           <li style="margin:2px 0">
+             <a href="pdfs/${encodeURIComponent(pdfName)}" target="_blank" rel="noopener">📄 ${pdfName}</a>
+           </li>
+         </ul>`
+      : `<span style="color:#999">Sin PDF asociado</span>`;
 
-    layers.push({ id, marker, popup, popupHtml, lat:coord.lat, lng:coord.lng, title:company, sheet, group, company, place });
-    bounds.push([coord.lat, coord.lng]);
+    return `
+      <div style="font:14px Arial;max-width:480px">
+        <h3 style="margin:0 0 4px 0;font-size:16px">${company}</h3>
+        <div style="font-size:12px;color:#444;margin:4px 0">Hoja: <b>${sheet}</b> · Grupo: <b>${group}</b></div>
+        <div style="font-size:12px;color:#666">Posición: ${place}</div>
+        <div style="font-size:12px;color:#111;margin-top:6px">Distancia a obra: <b>${kmTxt}</b></div>
+        <div style="margin-top:6px"><a href="${url}" target="_blank" rel="noopener" style="font-size:12px;">🧭 Ver ruta en Google&nbsp;Maps</a></div>
+        <div style="font-size:12px;color:#111;margin-top:8px">Carta de compromiso:</div>
+        ${pdfLink}
+        <div style="font-size:11px;color:#666;margin-top:8px">Coord: ${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}</div>
+      </div>`;
+  }
+
+  const popup = L.popup({autoPan:true, closeButton:true});
+  const marker = L.marker([coord.lat, coord.lng], {icon: markerIcon(pinColor)});
+  marker.bindPopup(popup).addTo(map);
+
+  const id = `pt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  marker.on('popupopen', ()=>{ popup.setContent(popupHtml()); });
+
+  layers.push({ id, marker, popup, popupHtml, lat:coord.lat, lng:coord.lng, title:company, sheet, group, company, place, pdfName });
+  bounds.push([coord.lat, coord.lng]);
+}
+
   }
 
   const companySeenBySheet = new Map();
@@ -687,8 +696,9 @@ function waitFor(testFn, timeoutMs=8000){
     return dup;
   }
 
-  async function handleExcel(file){
-    if(PUBLISHED_MODE){ setStatus('MODO PUBLICADO: carga de Excel bloqueada.'); return; }
+async function handleExcel(file, opts = {}){
+  const force = !!opts.force; // <- nuevo
+  if(PUBLISHED_MODE && !force){ setStatus('MODO PUBLICADO: carga de Excel bloqueada.'); return; }
 
     try{
       if(!window.XLSX){ setStatus('Cargando motor Excel…'); await waitFor(()=>!!window.XLSX, 10000); }
@@ -726,6 +736,7 @@ function waitFor(testFn, timeoutMs=8000){
           const groupRaw = (r[0] ?? '').toString().trim();
           const company = (r[1] ?? '').toString().trim();
           const place   = (r[2] ?? '').toString().trim();
+const pdfName = (r[3] ?? '').toString().trim(); // Columna D = nombre del PDF
           if(!company || !place) continue;
 
           const groupKey = groupRaw || '(Sin grupo)';
@@ -743,7 +754,7 @@ function waitFor(testFn, timeoutMs=8000){
           if(isDuplicateInSheet(alias, company, coord)) continue;
 
           selectUniquePdfForCompany(company);
-          addPoint({sheet: alias, group: groupKey, company, place, coord});
+addPoint({sheet: alias, group: groupKey, company, place, coord, pdfName});
           added++;
         }
       }
@@ -885,13 +896,59 @@ function waitFor(testFn, timeoutMs=8000){
   };
 
   document.getElementById('btnPublish').onclick = ()=>{ setPublishedMode(true); };
+// ===== AUTO-CARGA DESDE GITHUB PAGES =====
+const AUTO = {
+  excelUrl: 'data/fuentes.xls',   // <-- cambia a fuentes.xlsx si tu archivo es .xlsx
+  logoUrl:  'assets/logo.png',    // <-- si no tienes logo, pon null
+  hardLock: true                  // true = quita el botón "Editar"
+};
 
-  // init
-  setOrigin(ORIGIN.lat, ORIGIN.lng, ORIGIN.name);
-  map.setView([ORIGIN.lat, ORIGIN.lng], 11);
-  renderLegend();
-  positionTitlebar();
-  setStatus('Listo. Carga Excel y PDFs. Logo y título opcionales.');
+async function fetchAsFile(url){
+  const res = await fetch(url, { cache:'no-store' });
+  if(!res.ok) throw new Error(`No encuentro ${url} (HTTP ${res.status})`);
+  const ab = await res.arrayBuffer();
+  const name = url.split('/').pop() || 'archivo.bin';
+  const blob = new Blob([ab]);
+  return new File([blob], name, { type: blob.type || '' });
+}
+
+async function autoloadFromRepo(){
+  try{
+    // logo fijo
+    if(AUTO.logoUrl){
+      const img = document.getElementById('logoImg');
+      img.src = AUTO.logoUrl;
+      img.style.display = 'block';
+    }
+
+    // carga excel
+    const f = await fetchAsFile(AUTO.excelUrl);
+    await handleExcel(f, { force:true });
+
+    // bloquear al terminar
+    setPublishedMode(true);
+
+    // bloqueo duro (nadie puede "Editar")
+    if(AUTO.hardLock){
+      const unlockBtn = document.getElementById('btnUnlock');
+      if(unlockBtn) unlockBtn.remove();
+    }
+
+  }catch(e){
+    console.error(e);
+    setStatus('Error precargando desde GitHub:\n' + (e?.message || e));
+  }
+}
+
+// init
+setOrigin(ORIGIN.lat, ORIGIN.lng, ORIGIN.name);
+map.setView([ORIGIN.lat, ORIGIN.lng], 11);
+renderLegend();
+positionTitlebar();
+
+// 🔥 aquí auto-carga y luego bloquea
+autoloadFromRepo();
+
 })();
 </script>
 
