@@ -3,9 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mapa · Excel + Logo + Título + Deduplicación + Colores por Grupo (v2)</title>
+<title>Canteras · Publicado</title>
 
-<!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous"/>
 
 <style>
@@ -13,25 +12,15 @@
   html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
   #map{width:100%;height:100vh}
 
-  /* ✅ Gris SOLO cuando body tiene la clase .grayscale */
+  /* Gris SOLO cuando body tiene la clase .grayscale */
   .grayscale .leaflet-tile-pane{filter:grayscale(100%)}
 
-  .toolbar{
-    position:absolute;left:50%;transform:translateX(-50%);top:8px;
-    background:rgba(255,255,255,.95);border:1px solid #ddd;border-radius:10px;
-    padding:8px 10px;font-size:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap; z-index:1000;
-  }
-  .toolbar input[type='number'], .toolbar input[type='text']{width:160px;padding:4px 6px;border:1px solid #ccc;border-radius:6px}
-  .toolbar button,label.btn{padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer}
-  .toolbar button:hover, .toolbar label.btn:hover{background:#f3f4f6}
-  .small{font-size:11px;color:#555}
-  input[type="file"]{display:none}
+  /* ✅ Ocultamos toolbar SIEMPRE en publicado */
+  #toolbar{display:none !important;}
 
   .lbl{position:absolute;background:#fff;border:1px solid rgba(0,0,0,.25);border-radius:6px;padding:2px 6px;font-size:12px;color:#111;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;cursor:pointer}
-  .lbl.active{background:#fffbe6;border-color:#f59e0b}
   .label-pane{z-index:600}
 
-  /* Leyenda SIEMPRE visible + filtrable */
   .legend{
     position:absolute;right:10px;bottom:10px;background:rgba(255,255,255,.96);
     border:1px solid #ddd;border-radius:12px;padding:10px;font-size:12px;min-width:260px;max-width:380px;z-index:1000;
@@ -61,88 +50,49 @@
   /* ====== BARRA DE TÍTULO + LOGO ====== */
   .titlebar{
     position:absolute;
-    left:10px; right:auto; bottom:10px;
+    left:10px; bottom:10px;
     display:flex; flex-direction:column; align-items:flex-start; gap:6px;
     z-index:1100;
     background:rgba(255,255,255,.95); border:1px solid #ddd; border-radius:12px; padding:8px 12px;
   }
   .titlebar img{ max-height:48px; max-width:180px; object-fit:contain; border-radius:6px; border:1px solid #eee }
   .titlebar .title{
-    min-width:240px; font-weight:700; font-size:16px; outline:none; padding:4px 8px;
-    border-radius:6px; border:1px dashed transparent; text-align:left;
-  }
-  .titlebar .title:focus{ border-color:#9ca3af; background:#fff }
-
-  /* Etiqueta fija abajo-izquierda */
-  .corner-tag{
-    position:absolute; left:10px; bottom:10px; z-index:1100;
-    background:rgba(255,255,255,.95); border:1px solid #ddd; border-radius:10px;
-    padding:8px 12px; font-size:12px; font-weight:700; letter-spacing:.3px;
+    min-width:240px; font-weight:700; font-size:16px;
+    padding:4px 8px; border-radius:6px; border:1px dashed transparent;
   }
 
-  /* ✅ PILL “MODO PUBLICADO” + botón desbloqueo */
   .published-pill{
     position:absolute; left:10px; top:10px; z-index:1300;
     background:rgba(255,255,255,.95); border:1px solid #ddd;border-radius:999px;
     padding:6px 10px; font-size:12px; font-weight:800;
-    display:none;
-    gap:10px;
-    align-items:center;
+    display:inline-flex; gap:10px; align-items:center;
   }
-  .published-pill .btn-unlock{
-    padding:6px 10px;border:1px solid #ddd;border-radius:999px;background:#fff;cursor:pointer;font-weight:800;font-size:12px;
-  }
-  .published-pill .btn-unlock:hover{background:#f3f4f6}
 </style>
 </head>
 <body>
 
 <div id="map"></div>
 
-<div class="published-pill" id="publishedPill">
-  <span>📌 MODO PUBLICADO</span>
-  <button class="btn-unlock" id="btnUnlock">🔓 Editar</button>
+<div class="published-pill">
+  <span>📌 MODO PUBLICADO (bloqueado)</span>
 </div>
 
 <div class="titlebar" id="titlebar">
   <img id="logoImg" alt="Logo" style="display:none"/>
-  <div id="mapTitle" class="title" contenteditable="true" spellcheck="false" title="Escribe aquí el título del plano">Título del plano</div>
+  <div id="mapTitle" class="title">FUENTES DE SUMINISTRO Y SUBCONTRATACIONES</div>
 </div>
 
-<div class="toolbar" id="toolbar">
-  <button id="btnPick">📍 Fijar obra por click</button>
-  <label>lat,lon: <input id="inpLatLon" type="text" placeholder="37.3891,-5.9845"></label>
-  <button id="btnSetLatLon">Aplicar</button>
-
-  <label for="fileXLSX" class="btn">📄 Cargar Excel (A/B/C)</label>
-  <input id="fileXLSX" type="file" accept=".xlsx,.xls,.xlsm"/>
-
-  <label for="filePDF" class="btn">📑 Cargar PDFs (cartas)</label>
-  <input id="filePDF" type="file" accept="application/pdf" multiple/>
-
-  <label for="fileLogo" class="btn">🖼️ Logo</label>
-  <input id="fileLogo" type="file" accept="image/jpeg,image/png"/>
-
-  <button id="btnFit">Zoom a todo</button>
-  <label>Radio (km): <input id="km" type="number" min="1" step="1" value=""></label>
-  <button id="btnApplyKm">Aplicar</button>
-  <button id="btnClearKm">Quitar radio</button>
-  <label><input id="toggleLabels" type="checkbox" checked> Etiquetas permanentes</label>
-  <span class="small">Destino: <b id="destinoText">La Pañoleta, Sevilla</b></span>
-
-  <button id="btnPublish">📤 Publicar</button>
-</div>
+<!-- Toolbar queda en el HTML pero oculto por CSS (bloqueado) -->
+<div id="toolbar"></div>
 
 <div class="status" id="statusBox">Cargando librerías…</div>
 
 <div class="legend" id="legend">
   <h4>Grupos cargados</h4>
   <div id="legendBody">
-    <div class="hint">Carga un Excel (A=Grupo, B=Empresa, C=Posición). Aquí aparecerán filtros por hoja y grupo.</div>
+    <div class="hint">Cargando Excel…</div>
   </div>
 </div>
-
-<div class="corner-tag" id="cornerTag">FUENTES DE SUMINISTRO Y SUBCONTRATACIONES</div>
 
 <script>
 (function(){
@@ -152,119 +102,65 @@
     s.onerror=()=>console.error('Error cargando', src);
     document.head.appendChild(s);
   }
-  loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', ()=>{
-    if(!window.L){
-      loadScript('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js', ()=>{});
-    }
-  });
-  loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js', ()=>{
-    if(!window.XLSX){
-      loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.core.min.js', ()=>{});
-    }
-  });
+  loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', ()=>{});
+  loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js', ()=>{});
 })();
 </script>
 
 <script>
 const statusBox = document.getElementById('statusBox');
 function setStatus(msg){ statusBox.textContent = msg; }
-window.onerror = function(message, source, lineno, colno, error){
+window.onerror = function(message, source, lineno, colno){
   setStatus('Error JS: ' + message + '\nLínea: ' + lineno + ':' + colno);
 };
 window.addEventListener('unhandledrejection', (e)=>{
   setStatus('Promesa rechazada: ' + (e.reason && (e.reason.stack || e.reason.message) || e.reason));
 });
 
-function waitFor(testFn, timeoutMs=8000){
+function waitFor(testFn, timeoutMs=12000){
   return new Promise((res, rej)=>{
     const t0=Date.now();
     const it=setInterval(()=>{
       if(testFn()){ clearInterval(it); res(true); }
       else if(Date.now()-t0>timeoutMs){ clearInterval(it); rej(new Error('timeout')); }
-    }, 50);
+    }, 60);
   });
 }
 
 (async function boot(){
-  try{ setStatus('Cargando Leaflet…'); await waitFor(()=>!!window.L, 10000); }
-  catch{ setStatus('No se pudo cargar Leaflet. Revisa la red / CDN.'); return; }
+  try{ setStatus('Cargando Leaflet…'); await waitFor(()=>!!window.L); }
+  catch{ setStatus('No se pudo cargar Leaflet (CDN).'); return; }
+
+  try{ setStatus('Cargando motor Excel…'); await waitFor(()=>!!window.XLSX); }
+  catch{ setStatus('No se pudo cargar XLSX (CDN).'); return; }
 
   setStatus('Iniciando mapa…');
 
-  // ===== ✅ MODO PUBLICADO (bloquea UI/edición) =====
-  const UNLOCK_CODE = "1107";
-  let PUBLISHED_MODE = false;
-  const toolbarEl = document.getElementById('toolbar');
-  const publishedPill = document.getElementById('publishedPill');
-  const titleEl = document.getElementById('mapTitle');
-  const btnUnlock = document.getElementById('btnUnlock');
+  // ===== Config (tus rutas en GitHub) =====
+  const AUTO = {
+    excelUrl: 'data/fuentes.xlsx',
+    logoUrl:  'asset/LOGO.jpg'
+  };
 
-  function requestUnlock(){
-    const v = prompt('Código de seguridad (4 dígitos):');
-    if(v === null) return;
-    if(String(v).trim() === UNLOCK_CODE){
-      setPublishedMode(false);
-    }else{
-      setStatus('Código incorrecto. Sigue en MODO PUBLICADO.');
-    }
-  }
-
-  function setPublishedMode(on){
-    PUBLISHED_MODE = !!on;
-    if(toolbarEl) toolbarEl.style.display = PUBLISHED_MODE ? 'none' : 'flex';
-    if(publishedPill) publishedPill.style.display = PUBLISHED_MODE ? 'inline-flex' : 'none';
-    if(titleEl) titleEl.contentEditable = PUBLISHED_MODE ? 'false' : 'true';
-
-    if(obraMarker && obraMarker.dragging){
-      if(PUBLISHED_MODE) obraMarker.dragging.disable();
-      else obraMarker.dragging.enable();
-    }
-    if(PUBLISHED_MODE) setPicking(false);
-
-    if(PUBLISHED_MODE && circle){
-      try{ map.removeLayer(circle); }catch(_){}
-      circle = null;
-    }
-
-    setStatus(PUBLISHED_MODE
-      ? 'MODO PUBLICADO: solo filtros + mapa base. (🔓 Editar requiere código)'
-      : 'Listo. Carga Excel y PDFs. Logo y título opcionales.'
-    );
-  }
-
-  if(btnUnlock) btnUnlock.addEventListener('click', requestUnlock);
-
-  // ===== Config básica =====
-  const DESTINO_TEXTO_INICIAL = 'La Pañoleta, Sevilla';
-  const destinoTextEl = document.getElementById('destinoText');
-  destinoTextEl.textContent = DESTINO_TEXTO_INICIAL;
-
-  // ===== ✅ MAPAS BASE (más + ortofoto) =====
+  // ===== Mapa =====
   const map = L.map('map',{zoomControl:true}).setView([40.2,-3.7],5.8);
 
-  // (gris)
   const osmGray = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     maxZoom: 19, attribution: '&copy; OpenStreetMap'
   });
   const cartoGray = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
     maxZoom:19, attribution:'&copy; OpenStreetMap &copy; CARTO'
   });
-
-  // (color)
   const topoColor = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{
     maxZoom: 17, attribution: '&copy; OpenTopoMap (CC-BY-SA) &copy; OpenStreetMap'
   });
-
-  // ✅ Ortofoto PNOA MA (TMS con -y)
   const ortoPNOA = L.tileLayer('https://tms-pnoa-ma.idee.es/1.0.0/pnoa-ma/{z}/{x}/{-y}.jpeg',{
     maxZoom: 20, attribution:'&copy; CNIG/IGN (PNOA MA)'
   });
 
-  // inicial
   osmGray.addTo(map);
-  document.body.classList.add('grayscale'); // porque el inicial es (gris)
+  document.body.classList.add('grayscale');
 
-  // selector
   const baseLayers = {
     'OSM (gris)': osmGray,
     'Carto (gris)': cartoGray,
@@ -273,7 +169,6 @@ function waitFor(testFn, timeoutMs=8000){
   };
   L.control.layers(baseLayers, null, { position:'topleft', collapsed:true }).addTo(map);
 
-  // auto gris según base
   function setGrayscaleByLayer(layer){
     const isGray = (layer === osmGray) || (layer === cartoGray);
     document.body.classList.toggle('grayscale', !!isGray);
@@ -281,7 +176,6 @@ function waitFor(testFn, timeoutMs=8000){
   map.on('baselayerchange', (e)=> setGrayscaleByLayer(e.layer));
   setGrayscaleByLayer(osmGray);
 
-  // fallback si OSM da error y está activa
   osmGray.on('tileerror', ()=>{
     if(map.hasLayer(osmGray)){
       setStatus('Fallo OSM. Cambiando a Carto…');
@@ -291,7 +185,6 @@ function waitFor(testFn, timeoutMs=8000){
     }
   });
 
-  // panes
   const labelPane = map.createPane('labels'); labelPane.classList.add('label-pane');
   const obraPane = map.createPane('obraPane'); obraPane.style.zIndex = 1200;
 
@@ -301,7 +194,6 @@ function waitFor(testFn, timeoutMs=8000){
     'Subcontratistas': '#1565c0',
     'Gestores de Residuos': '#ef6c00'
   };
-
   const groupColorMap = {};
   function hashCode(str){ let h=0; for(let i=0;i<str.length;i++){ h=(h<<5)-h+str.charCodeAt(i); h|=0; } return Math.abs(h); }
   function hsvToRgb(h,s,v){ let f=(n,k=(n+h/60)%6)=>v-v*s*Math.max(Math.min(k,4-k,1),0); return [f(5),f(3),f(1)]; }
@@ -314,7 +206,6 @@ function waitFor(testFn, timeoutMs=8000){
     const hex = rgbToHex(r,g,b);
     groupColorMap[key] = hex; return hex;
   }
-
   function markerIcon(color='#333'){
     const svg=encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='"+color+"' d='M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z'/></svg>");
     return L.icon({iconUrl:'data:image/svg+xml;charset=UTF-8,'+svg,iconSize:[28,28],iconAnchor:[14,28],popupAnchor:[0,-28]});
@@ -325,7 +216,6 @@ function waitFor(testFn, timeoutMs=8000){
     const r=parseInt(hex.substring(0,2),16), g=parseInt(hex.substring(2,4),16), b=parseInt(hex.substring(4,6),16);
     return `rgba(${r},${g},${b},${alpha})`;
   }
-
   function createObraDivIcon(){
     const html = `
       <div class="obra-pin" aria-label="Localización de la obra">
@@ -336,7 +226,6 @@ function waitFor(testFn, timeoutMs=8000){
       </div>`;
     return L.divIcon({ className:'', html, iconSize:[0,0], iconAnchor:[0,0], popupAnchor:[0,-28] });
   }
-
   function slug(s){ return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
   function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
   function haversineKm(lat1, lng1, lat2, lng2){
@@ -346,118 +235,21 @@ function waitFor(testFn, timeoutMs=8000){
     return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
   }
 
-  // === Obra (ORIGIN) ===
-  const destinoText = document.getElementById('destinoText');
-  let ORIGIN = { lat: 37.3891, lng: -5.9845, name: destinoText ? destinoText.textContent : 'Obra' };
-  let obraMarker = null;
-  let circle = null;
-
-  function refreshCircle(){
-    if(PUBLISHED_MODE) return;
-    const v=parseFloat(document.getElementById('km').value);
-    if(circle){ map.removeLayer(circle); circle=null; }
-    if(!isNaN(v) && v>0){ circle = L.circle([ORIGIN.lat,ORIGIN.lng], {radius: v*1000, color:'#444', weight:1, fillOpacity:0.05}).addTo(map); }
-  }
-  function setOrigin(lat, lng, name=null){
-    if(PUBLISHED_MODE) return;
-    ORIGIN.lat = lat; ORIGIN.lng = lng; if(name) ORIGIN.name = name;
-    destinoText.textContent = name ? name : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    if(!obraMarker){
-      obraMarker = L.marker([lat,lng], { icon: createObraDivIcon(), draggable:true, pane:'obraPane', zIndexOffset: 100000 })
-        .bindPopup(`<b>Obra</b><br>${destinoText.textContent}`)
-        .addTo(map);
-      obraMarker.on('add', ()=>{ try{ obraMarker.bringToFront(); }catch(_){} });
-      obraMarker.on('dragend', ()=>{
-        if(PUBLISHED_MODE) return;
-        const p = obraMarker.getLatLng();
-        setOrigin(p.lat, p.lng);
-        obraMarker.setPopupContent(`<b>Obra</b><br>${destinoText.textContent}`).openPopup();
-        refreshCircle();
-      });
-    } else {
-      obraMarker.setLatLng([lat,lng]);
-      obraMarker.setPopupContent(`<b>Obra</b><br>${destinoText.textContent}`);
-      try{ obraMarker.bringToFront(); }catch(_){}
-    }
-    refreshCircle();
-    applyFilters();
-    layers.forEach(Lr=>{
-      if (Lr.marker && Lr.marker.isPopupOpen && Lr.marker.isPopupOpen()) {
-        Lr.popup.setContent(Lr.popupHtml());
-      }
-    });
-  }
+  // ===== Origen fijo =====
+  let ORIGIN = { lat: 37.3891, lng: -5.9845, name: 'Obra' };
+  let obraMarker = L.marker([ORIGIN.lat, ORIGIN.lng], { icon: createObraDivIcon(), draggable:false, pane:'obraPane', zIndexOffset: 100000 })
+    .bindPopup(`<b>Obra</b><br>${ORIGIN.lat.toFixed(5)}, ${ORIGIN.lng.toFixed(5)}`)
+    .addTo(map);
 
   function gmapsDirUrl(destLat, destLng){
     return `https://www.google.com/maps/dir/?api=1&origin=${ORIGIN.lat},${ORIGIN.lng}&destination=${destLat},${destLng}&travelmode=driving`;
   }
 
-  // ===== PDFs =====
-  let pdfFiles = [];
-  const STOPWORDS = new Set(['sa','sau','sl','slu','sll','sae','sociedad','anonima','anónima','limited','ltd','company','compania','compañia','grupo','gr','obras','servicios','service','ingenieria','ingeniería','construcciones','construccion','industrial','industriales','de','del','la','el','los','las','y','and','the','hijos','hermanos','herm','hijas']);
-  const GENERICOS = new Set(['hormigon','hormigones','ferralla','acero','cemento','prefabricados','agregados','transportes','canteras','movimiento','tierras','maquinaria','suministros','gestores','residuos']);
-
-  function normalizeCompanyName(name){
-    let s = slug(name).replace(/[&]/g,' y ');
-    s = s.replace(/\b(s\.?a\.?u?|s\.?a\.?|s\.?l\.?u?|s\.?l\.?|sau|sa|slu|sl)\b/g,' ');
-    s = s.replace(/\b(grupo|obras|servicios|ingenieria|ingeniería|construcciones|construccion)\b/g,' ');
-    return s.replace(/\s+/g,' ').trim();
-  }
-  function tokensFromSlug(str){
-    return new Set(
-      slug(str)
-        .split(/[^a-z0-9áéíóúüñ]+/i)
-        .filter(t => t && t.length>=3 && !STOPWORDS.has(t))
-    );
-  }
-
-  const COMPANY_PDF_UNIQUE = new Map();
-  function scorePdfForCompany(pdf, cTokens, coreSlug){
-    const inter = Array.from(cTokens).filter(t => pdf.tokens.has(t));
-    let score = inter.length * 2;
-    if(pdf.slug.includes(coreSlug) && coreSlug.length>=5) score += 5;
-    if(inter.some(t=>t.length>=5)) score += 2;
-    if(inter.some(t=>!GENERICOS.has(t))) score += 3;
-    return score;
-  }
-  function selectUniquePdfForCompany(company){
-    const core = normalizeCompanyName(company);
-    if(COMPANY_PDF_UNIQUE.has(core)) return COMPANY_PDF_UNIQUE.get(core);
-    if(!pdfFiles.length) return null;
-    const cTokens = tokensFromSlug(core);
-    const coreSlug = slug(core);
-    let best = null, bestScore = 0;
-    for(const p of pdfFiles){
-      const sc = scorePdfForCompany(p, cTokens, coreSlug);
-      if(sc>bestScore){ best = p; bestScore = sc; }
-    }
-    if(bestScore<2) best = null;
-    COMPANY_PDF_UNIQUE.set(core, best);
-    return best;
-  }
-  function indexPdfs(fileList){
-    if(PUBLISHED_MODE) return;
-    pdfFiles = [];
-    for(const f of fileList){
-      const url = URL.createObjectURL(f);
-      const name = f.name || 'documento.pdf';
-      const s = slug(name);
-      pdfFiles.push({ name, url, slug: s, tokens: tokensFromSlug(s) });
-    }
-    COMPANY_PDF_UNIQUE.clear();
-    layers.forEach(Lr=>{ if(Lr && Lr.company){ selectUniquePdfForCompany(Lr.company); }});
-    layers.forEach(Lr=>{
-      if (Lr.marker && Lr.marker.isPopupOpen && Lr.marker.isPopupOpen()) {
-        Lr.popup.setContent(Lr.popupHtml());
-      }
-    });
-  }
-
-  // ===== Geocoding =====
+  // ===== Geocoding (si en columna C hay texto) =====
   let geoCache={}; const GEO_CACHE_KEY='geoCacheV3';
   try{ geoCache=JSON.parse(localStorage.getItem(GEO_CACHE_KEY)||'{}'); }catch(e){ geoCache={}; }
+
   async function geocode(text){
-    if(PUBLISHED_MODE) return null;
     const key=slug(text);
     if(geoCache[key]) return geoCache[key];
     await sleep(250);
@@ -491,7 +283,7 @@ function waitFor(testFn, timeoutMs=8000){
   function renderLegend(){
     const sheets = Object.keys(filters);
     if(!sheets.length){
-      legendBody.innerHTML = `<div class="hint">Carga un Excel (A=Grupo, B=Empresa, C=Posición). Aquí aparecerán filtros por hoja y grupo.</div>`;
+      legendBody.innerHTML = `<div class="hint">No hay datos cargados aún.</div>`;
       return;
     }
     const frag = [];
@@ -559,37 +351,25 @@ function waitFor(testFn, timeoutMs=8000){
     });
   }
 
-  function inKmRadius(lat2,lng2){
-    const v=parseFloat(document.getElementById('km').value);
-    if(isNaN(v) || v<=0) return true;
-    const R=6371,toRad=d=>d*Math.PI/180;
-    const dLat=toRad(lat2-ORIGIN.lat), dLon=toRad(lng2-ORIGIN.lng);
-    const a=Math.sin(dLat/2)**2 + Math.cos(toRad(ORIGIN.lat))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-    const d=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-    return d<=v+1e-9;
-  }
-
   function applyFilters(){
     layers.forEach(Lr=>{
       const sheetOn = filters[Lr.sheet]?.__checked ?? true;
       const groupOn = filters[Lr.sheet]?.groups?.[Lr.group] ?? true;
-      const radiusOk = inKmRadius(Lr.lat, Lr.lng);
-      const show = sheetOn && groupOn && radiusOk;
+      const show = sheetOn && groupOn;
       if(show){ if(!map.hasLayer(Lr.marker)) Lr.marker.addTo(map); }
       else{ if(map.hasLayer(Lr.marker)) map.removeLayer(Lr.marker); }
     });
     layoutLabels();
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
+    try{ obraMarker.bringToFront(); }catch(_){}
   }
 
   function layoutLabels(){
     document.querySelectorAll('.lbl').forEach(el=>el.remove());
-    const toggle = document.getElementById('toggleLabels');
-    if(toggle && !toggle.checked) return;
 
     const vis=layers.filter(Lr=> map.hasLayer(Lr.marker));
     const pane=document.querySelector('.label-pane');
     const occ=[]; function ov(a,b){return !(b.x>a.x+a.w || b.x+b.w<a.x || b.y>a.y+a.h || b.y+b.h<a.y);}
+
     const meas=document.createElement('div');
     meas.className='lbl';
     meas.style.left='-1000px';
@@ -602,9 +382,9 @@ function waitFor(testFn, timeoutMs=8000){
       meas.textContent=Lr.title||'·';
       const bb=meas.getBoundingClientRect();
       const w=bb.width,h=bb.height;
+
       const steps=[[0,-18],[18,-18],[18,0],[18,18],[0,18],[-18,18],[-18,0],[-18,-18]];
       let placed=null;
-
       for(let r=1;r<=7 && !placed;r++){
         for(let k=0;k<steps.length && !placed;k++){
           const x=pt.x+steps[k][0]*r, y=pt.y+steps[k][1]*r;
@@ -618,7 +398,6 @@ function waitFor(testFn, timeoutMs=8000){
 
       const div=document.createElement('div');
       div.className='lbl';
-      div.dataset.id = Lr.id;
       div.style.left=placed.x+'px';
       div.style.top=placed.y+'px';
       div.style.borderColor = sheetCategoryColor(Lr.sheet);
@@ -629,7 +408,7 @@ function waitFor(testFn, timeoutMs=8000){
     });
 
     meas.remove();
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
+    try{ obraMarker.bringToFront(); }catch(_){}
   }
 
   map.on('moveend zoomend', layoutLabels);
@@ -641,50 +420,56 @@ function waitFor(testFn, timeoutMs=8000){
     companySeenBySheet.clear();
   }
 
-function addPoint({sheet, group, company, place, coord, pdfName}){
-  const pinColor = colorForGroup(sheet, group);
+  function addPoint({sheet, group, company, place, coord, pdfName}){
+    const pinColor = colorForGroup(sheet, group);
 
-  function popupHtml(){
-    const km = haversineKm(ORIGIN.lat, ORIGIN.lng, coord.lat, coord.lng);
-    const kmTxt = (km >= 100) ? `${km.toFixed(0)} km` : `${km.toFixed(1)} km`;
-    const url = gmapsDirUrl(coord.lat, coord.lng);
+    function popupHtml(){
+      const km = haversineKm(ORIGIN.lat, ORIGIN.lng, coord.lat, coord.lng);
+      const kmTxt = (km >= 100) ? `${km.toFixed(0)} km` : `${km.toFixed(1)} km`;
+      const url = gmapsDirUrl(coord.lat, coord.lng);
 
-    // ✅ PDF directo desde columna D
-    const pdfLink = (pdfName && pdfName.toLowerCase().endsWith('.pdf'))
-      ? `<ul style="margin:4px 0 0 16px;padding:0">
-           <li style="margin:2px 0">
-             <a href="pdfs/${encodeURIComponent(pdfName)}" target="_blank" rel="noopener">📄 ${pdfName}</a>
-           </li>
-         </ul>`
-      : `<span style="color:#999">Sin PDF asociado</span>`;
+      const pdfOk = pdfName && pdfName.toLowerCase().endsWith('.pdf');
+      const pdfHref = pdfOk ? `pdfs/${encodeURIComponent(pdfName)}` : null;
 
-    return `
-      <div style="font:14px Arial;max-width:480px">
-        <h3 style="margin:0 0 4px 0;font-size:16px">${company}</h3>
-        <div style="font-size:12px;color:#444;margin:4px 0">Hoja: <b>${sheet}</b> · Grupo: <b>${group}</b></div>
-        <div style="font-size:12px;color:#666">Posición: ${place}</div>
-        <div style="font-size:12px;color:#111;margin-top:6px">Distancia a obra: <b>${kmTxt}</b></div>
-        <div style="margin-top:6px"><a href="${url}" target="_blank" rel="noopener" style="font-size:12px;">🧭 Ver ruta en Google&nbsp;Maps</a></div>
-        <div style="font-size:12px;color:#111;margin-top:8px">Carta de compromiso:</div>
-        ${pdfLink}
-        <div style="font-size:11px;color:#666;margin-top:8px">Coord: ${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}</div>
-      </div>`;
-  }
+      const pdfBlock = pdfHref
+        ? `<ul style="margin:4px 0 0 16px;padding:0">
+             <li style="margin:2px 0">
+               <a href="${pdfHref}" target="_blank" rel="noopener">📄 ${pdfName}</a>
+             </li>
+           </ul>`
+        : `<span style="color:#999">Sin PDF asociado</span>`;
 
-  const popup = L.popup({autoPan:true, closeButton:true});
-  const marker = L.marker([coord.lat, coord.lng], {icon: markerIcon(pinColor)});
-  marker.bindPopup(popup).addTo(map);
+      return `
+        <div style="font:14px Arial;max-width:480px">
+          <h3 style="margin:0 0 4px 0;font-size:16px">${company}</h3>
+          <div style="font-size:12px;color:#444;margin:4px 0">Hoja: <b>${sheet}</b> · Grupo: <b>${group}</b></div>
+          <div style="font-size:12px;color:#666">Posición: ${place}</div>
+          <div style="font-size:12px;color:#111;margin-top:6px">Distancia a obra: <b>${kmTxt}</b></div>
+          <div style="margin-top:6px"><a href="${url}" target="_blank" rel="noopener" style="font-size:12px;">🧭 Ver ruta en Google&nbsp;Maps</a></div>
+          <div style="font-size:12px;color:#111;margin-top:8px">Carta de compromiso:</div>
+          ${pdfBlock}
+          <div style="font-size:11px;color:#666;margin-top:8px">Coord: ${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}</div>
+        </div>`;
+    }
 
-  const id = `pt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  marker.on('popupopen', ()=>{ popup.setContent(popupHtml()); });
+    const popup = L.popup({autoPan:true, closeButton:true});
+    const marker = L.marker([coord.lat, coord.lng], {icon: markerIcon(pinColor)});
+    marker.bindPopup(popup).addTo(map);
 
-  layers.push({ id, marker, popup, popupHtml, lat:coord.lat, lng:coord.lng, title:company, sheet, group, company, place, pdfName });
-  bounds.push([coord.lat, coord.lng]);
-}
+    const id = `pt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    marker.on('popupopen', ()=>{ popup.setContent(popupHtml()); });
 
+    layers.push({ id, marker, popup, popupHtml, lat:coord.lat, lng:coord.lng, title:company, sheet, group, company, place, pdfName });
+    bounds.push([coord.lat, coord.lng]);
   }
 
   const companySeenBySheet = new Map();
+  function normalizeCompanyName(name){
+    let s = slug(name).replace(/[&]/g,' y ');
+    s = s.replace(/\b(s\.?a\.?u?|s\.?a\.?|s\.?l\.?u?|s\.?l\.?|sau|sa|slu|sl)\b/g,' ');
+    s = s.replace(/\b(grupo|obras|servicios|ingenieria|ingeniería|construcciones|construccion)\b/g,' ');
+    return s.replace(/\s+/g,' ').trim();
+  }
   function isDuplicateInSheet(sheet, company, coord){
     const norm = normalizeCompanyName(company);
     if(!companySeenBySheet.has(sheet)) companySeenBySheet.set(sheet, new Map());
@@ -696,259 +481,99 @@ function addPoint({sheet, group, company, place, coord, pdfName}){
     return dup;
   }
 
-async function handleExcel(file, opts = {}){
-  const force = !!opts.force; // <- nuevo
-  if(PUBLISHED_MODE && !force){ setStatus('MODO PUBLICADO: carga de Excel bloqueada.'); return; }
+  async function handleExcelArrayBuffer(ab){
+    clearAll();
+    setStatus('Leyendo Excel…');
 
-    try{
-      if(!window.XLSX){ setStatus('Cargando motor Excel…'); await waitFor(()=>!!window.XLSX, 10000); }
-    }catch{ setStatus('No se pudo cargar XLSX. ¿Bloqueo de CDN?'); return; }
+    const wb = XLSX.read(ab, {type:'array'});
+    filters = {}; let added = 0;
 
-    try{
-      clearAll();
-      setStatus('Leyendo Excel…');
-      const ab = await file.arrayBuffer();
-      const wb = XLSX.read(ab, {type:'array'});
+    for(const rawName of wb.SheetNames){
+      const alias = normalizeSheetName(rawName);
+      const sheet = wb.Sheets[rawName]; if(!sheet) continue;
 
-      filters = {}; let added = 0;
+      const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', blankrows:false});
+      if(!rows || !rows.length) continue;
 
-      for(const rawName of wb.SheetNames){
-        const alias = normalizeSheetName(rawName);
-        const sheet = wb.Sheets[rawName]; if(!sheet) continue;
-        const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', blankrows:false});
-        if(!rows || !rows.length) continue;
+      const first = rows[0].map(v=>String(v).toLowerCase());
+      const looksHeader =
+        first.join(' ').includes('grupo') ||
+        first.join(' ').includes('tipo') ||
+        first.join(' ').includes('empresa') ||
+        first.join(' ').includes('posición') ||
+        first.join(' ').includes('posicion') ||
+        first.join(' ').includes('localización') ||
+        first.join(' ').includes('localizacion') ||
+        first.join(' ').includes('pdf');
 
-        const first = rows[0].map(v=>String(v).toLowerCase());
-        const looksHeader =
-          first.join(' ').includes('grupo') ||
-          first.join(' ').includes('tipo') ||
-          first.join(' ').includes('empresa') ||
-          first.join(' ').includes('posición') ||
-          first.join(' ').includes('posicion') ||
-          first.join(' ').includes('localización') ||
-          first.join(' ').includes('localizacion');
+      const dataRows = looksHeader ? rows.slice(1) : rows;
 
-        const dataRows = looksHeader ? rows.slice(1) : rows;
+      if(!filters[alias]) filters[alias] = { __checked: true, groups: {} };
 
-        if(!filters[alias]) filters[alias] = { __checked: true, groups: {} };
+      for(const r of dataRows){
+        const groupRaw = (r[0] ?? '').toString().trim();
+        const company  = (r[1] ?? '').toString().trim();
+        const place    = (r[2] ?? '').toString().trim();
+        const pdfName  = (r[3] ?? '').toString().trim(); // ✅ Col D
 
-        for(const r of dataRows){
-          const groupRaw = (r[0] ?? '').toString().trim();
-          const company = (r[1] ?? '').toString().trim();
-          const place   = (r[2] ?? '').toString().trim();
-const pdfName = (r[3] ?? '').toString().trim(); // Columna D = nombre del PDF
-          if(!company || !place) continue;
+        if(!company || !place) continue;
 
-          const groupKey = groupRaw || '(Sin grupo)';
-          if(!(groupKey in filters[alias].groups)) filters[alias].groups[groupKey] = true;
+        const groupKey = groupRaw || '(Sin grupo)';
+        if(!(groupKey in filters[alias].groups)) filters[alias].groups[groupKey] = true;
 
-          let coord = null;
-          const maybeCoord = place.match(/^\s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*$/);
-          if(maybeCoord){
-            coord = {lat: parseFloat(maybeCoord[1]), lng: parseFloat(maybeCoord[3])};
-          } else {
-            coord = await geocode(place);
-          }
-          if(!coord) continue;
-
-          if(isDuplicateInSheet(alias, company, coord)) continue;
-
-          selectUniquePdfForCompany(company);
-addPoint({sheet: alias, group: groupKey, company, place, coord, pdfName});
-          added++;
+        let coord = null;
+        const maybeCoord = place.match(/^\s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*$/);
+        if(maybeCoord){
+          coord = {lat: parseFloat(maybeCoord[1]), lng: parseFloat(maybeCoord[3])};
+        } else {
+          coord = await geocode(place);
         }
+        if(!coord) continue;
+
+        if(isDuplicateInSheet(alias, company, coord)) continue;
+
+        addPoint({sheet: alias, group: groupKey, company, place, coord, pdfName});
+        added++;
       }
+    }
 
-      renderLegend(); applyFilters();
+    renderLegend();
+    applyFilters();
 
-      if(added){
-        if(bounds.length) map.fitBounds(bounds, {padding:[20,20]});
-        layoutLabels();
-        setStatus(`Cargado: ${added} punto(s) en ${Object.keys(filters).length} hoja(s).`);
-      } else {
-        setStatus('Excel leído pero no se añadieron puntos. Revisa columnas: A=Grupo, B=Empresa, C=Posición.');
-      }
-    }catch(err){
-      console.error(err);
-      setStatus('Error leyendo el Excel.\n' + (err && (err.stack || err.message) || err));
+    if(added){
+      if(bounds.length) map.fitBounds(bounds, {padding:[20,20]});
+      layoutLabels();
+      setStatus(`Cargado: ${added} punto(s) en ${Object.keys(filters).length} hoja(s).`);
+    } else {
+      setStatus('Excel leído pero no se añadieron puntos. Revisa: A=Grupo, B=Empresa, C=Posición, D=PDF.');
     }
   }
 
-  document.getElementById('btnFit').onclick = ()=>{
-    if(PUBLISHED_MODE) return;
-    const all = [...bounds]; if(obraMarker){ all.push([ORIGIN.lat, ORIGIN.lng]); }
-    if(all.length) map.fitBounds(all,{padding:[20,20]});
-    else map.setView([ORIGIN.lat,ORIGIN.lng], 11);
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
-  };
-  document.getElementById('btnApplyKm').onclick = ()=>{
-    if(PUBLISHED_MODE) return;
-    refreshCircle(); applyFilters();
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
-  };
-  document.getElementById('btnClearKm').onclick = ()=>{
-    if(PUBLISHED_MODE) return;
-    document.getElementById('km').value='';
-    refreshCircle(); applyFilters();
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
-  };
-  document.getElementById('km').addEventListener('input', ()=>{
-    if(PUBLISHED_MODE) return;
-    refreshCircle(); applyFilters();
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
-  });
-
-  document.getElementById('fileXLSX').addEventListener('change', (e)=>{
-    if(PUBLISHED_MODE) return;
-    const f = e.target.files && e.target.files[0];
-    if(f){ handleExcel(f); }
-  });
-  document.getElementById('filePDF').addEventListener('change', (e)=>{
-    if(PUBLISHED_MODE) return;
-    const files = e.target.files;
-    if(files && files.length){
-      indexPdfs(files);
-      setStatus(`Cargados ${files.length} PDF(s). Asociación única por empresa.`);
-    }
-  });
-
-  function positionTitlebar(){
-    const tb = document.getElementById('titlebar');
-    const tag = document.getElementById('cornerTag');
-    if(!tb || !tag) return;
-    const gap = 8, margin = 10, tagH = tag.offsetHeight || 0;
-    tb.style.left = margin + 'px';
-    tb.style.right = 'auto';
-    tb.style.bottom = (margin + tagH + gap) + 'px';
+  async function fetchArrayBuffer(url){
+    const res = await fetch(url, { cache:'no-store' });
+    if(!res.ok) throw new Error(`No encuentro ${url} (HTTP ${res.status})`);
+    return await res.arrayBuffer();
   }
-  window.addEventListener('resize', positionTitlebar);
 
-  document.getElementById('fileLogo').addEventListener('change', (e)=>{
-    if(PUBLISHED_MODE) return;
-    const f = e.target.files && e.target.files[0];
-    if(!f) return;
-    const img = document.getElementById('logoImg');
-    const url = URL.createObjectURL(f);
-    img.src = url;
-    img.style.display='block';
-
-    const reader = new FileReader();
-    reader.onload = ()=>{
-      try{ localStorage.setItem('logoDataURL', reader.result); }catch(_){}
-      positionTitlebar();
-    };
-    reader.readAsDataURL(f);
-    positionTitlebar();
-  });
-
+  // ===== AUTOLOAD FINAL =====
   try{
-    const prevT = localStorage.getItem('mapTitle');
-    if(prevT) titleEl.textContent = prevT;
-  }catch(_){}
-  titleEl.addEventListener('input', ()=>{
-    if(PUBLISHED_MODE) return;
-    try{ localStorage.setItem('mapTitle', titleEl.textContent||''); }catch(_){}
-    positionTitlebar();
-  });
-
-  try{
-    const prevLogo = localStorage.getItem('logoDataURL');
-    if(prevLogo){
-      const img=document.getElementById('logoImg');
-      img.src=prevLogo;
-      img.style.display='block';
-    }
-  }catch(_){}
-
-  // pick
-  let picking=false; const btnPick = document.getElementById('btnPick');
-  function setPicking(on){
-    if(PUBLISHED_MODE) { picking=false; return; }
-    picking = on;
-    btnPick.textContent = picking ? '✅ Click en el mapa… (ESC para cancelar)' : '📍 Fijar obra por click';
-    btnPick.style.borderColor = picking ? '#16a34a' : '#ddd';
-  }
-  btnPick.onclick = ()=>{ if(PUBLISHED_MODE) return; setPicking(!picking); };
-
-  map.on('click', (e)=>{
-    if(PUBLISHED_MODE) return;
-    if(!picking) return;
-    setOrigin(e.latlng.lat, e.latlng.lng);
-    if(obraMarker) obraMarker.openPopup();
-    setPicking(false);
-    setStatus('Obra fijada por click.');
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
-  });
-  window.addEventListener('keydown', (ev)=>{ if(ev.key==='Escape' && picking) setPicking(false); });
-
-  document.getElementById('btnSetLatLon').onclick = ()=>{
-    if(PUBLISHED_MODE) return;
-    const val = (document.getElementById('inpLatLon').value||'').trim();
-    const m = val.match(/^\s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*$/);
-    if(!m){ setStatus('Formato lat,lon inválido. Ej: 37.3891,-5.9845'); return; }
-    const lat=parseFloat(m[1]), lng=parseFloat(m[3]);
-    if(!Number.isFinite(lat)||!Number.isFinite(lng)){ setStatus('lat/lon no numéricos.'); return; }
-    setOrigin(lat,lng);
-    map.setView([lat,lng], 13);
-    if(obraMarker) obraMarker.openPopup();
-    setStatus('Obra fijada por lat,lon.');
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
-  };
-
-  document.getElementById('btnPublish').onclick = ()=>{ setPublishedMode(true); };
-// ===== AUTO-CARGA DESDE GITHUB PAGES =====
-const AUTO = {
-  excelUrl: 'data/fuentes.xls',   // <-- cambia a fuentes.xlsx si tu archivo es .xlsx
-  logoUrl:  'assets/logo.png',    // <-- si no tienes logo, pon null
-  hardLock: true                  // true = quita el botón "Editar"
-};
-
-async function fetchAsFile(url){
-  const res = await fetch(url, { cache:'no-store' });
-  if(!res.ok) throw new Error(`No encuentro ${url} (HTTP ${res.status})`);
-  const ab = await res.arrayBuffer();
-  const name = url.split('/').pop() || 'archivo.bin';
-  const blob = new Blob([ab]);
-  return new File([blob], name, { type: blob.type || '' });
-}
-
-async function autoloadFromRepo(){
-  try{
-    // logo fijo
+    // Logo
     if(AUTO.logoUrl){
       const img = document.getElementById('logoImg');
       img.src = AUTO.logoUrl;
       img.style.display = 'block';
     }
 
-    // carga excel
-    const f = await fetchAsFile(AUTO.excelUrl);
-    await handleExcel(f, { force:true });
+    setStatus('Descargando Excel del repo…');
+    const ab = await fetchArrayBuffer(AUTO.excelUrl);
 
-    // bloquear al terminar
-    setPublishedMode(true);
+    await handleExcelArrayBuffer(ab);
 
-    // bloqueo duro (nadie puede "Editar")
-    if(AUTO.hardLock){
-      const unlockBtn = document.getElementById('btnUnlock');
-      if(unlockBtn) unlockBtn.remove();
-    }
-
+    setStatus('Publicado y bloqueado ✅');
   }catch(e){
     console.error(e);
-    setStatus('Error precargando desde GitHub:\n' + (e?.message || e));
+    setStatus('Error precargando:\n' + (e?.message || e));
   }
-}
-
-// init
-setOrigin(ORIGIN.lat, ORIGIN.lng, ORIGIN.name);
-map.setView([ORIGIN.lat, ORIGIN.lng], 11);
-renderLegend();
-positionTitlebar();
-
-// 🔥 aquí auto-carga y luego bloquea
-autoloadFromRepo();
-
 })();
 </script>
 
