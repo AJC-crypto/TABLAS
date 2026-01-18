@@ -12,7 +12,6 @@
   html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
   #map{width:100%;height:100vh}
 
-  /* Gris SOLO cuando body tiene la clase .grayscale */
   .grayscale .leaflet-tile-pane{filter:grayscale(100%)}
 
   .toolbar{
@@ -30,7 +29,7 @@
 
   .legend{
     position:absolute;right:10px;bottom:10px;background:rgba(255,255,255,.96);
-    border:1px solid #ddd;border-radius:12px;padding:10px;font-size:12px;min-width:260px;max-width:380px;z-index:1000;
+    border:1px solid #ddd;border-radius:12px;padding:10px;font-size:12px;min-width:260px;max-width:420px;z-index:1000;
   }
   .legend h4{margin:0 0 8px 0;font-size:13px}
   .legend .sheet{border-top:1px solid #eee;padding-top:8px;margin-top:8px}
@@ -44,17 +43,15 @@
 
   .status{
     position:absolute;right:10px;top:10px;background:rgba(255,255,255,.95);
-    border:1px solid #ddd;border-radius:10px;padding:8px 10px;font-size:12px;z-index:1000;max-width:560px;white-space:pre-wrap
+    border:1px solid #ddd;border-radius:10px;padding:8px 10px;font-size:12px;z-index:1000;max-width:700px;white-space:pre-wrap
   }
 
-  /* PIN OBRA */
   .obra-pin { position: relative; width: 38px; height: 38px; transform: translate(-50%, -100%); pointer-events:auto; }
   .obra-pin .pin { position:absolute; left:0; top:0; width:38px; height:38px; animation: breathe 1.6s ease-in-out infinite; filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
   .obra-pin .halo { position:absolute; left:50%; top:50%; width:14px; height:14px; border-radius:50%; transform: translate(-50%, -20%); background: rgba(211,47,47,.25); animation: pulse 1.6s ease-out infinite; }
   @keyframes breathe { 0% { transform: scale(0.92); opacity:.95 } 50%{ transform: scale(1.20); opacity:1 } 100%{ transform: scale(0.92); opacity:.95 } }
   @keyframes pulse { 0% { box-shadow:0 0 0 0 rgba(211,47,47,.45); opacity:.9 } 70%{ box-shadow:0 0 0 22px rgba(211,47,47,0); opacity:.15 } 100%{ box-shadow:0 0 0 0 rgba(211,47,47,0); opacity:.9 } }
 
-  /* TITLEBAR */
   .titlebar{
     position:absolute;
     left:10px; bottom:10px;
@@ -63,15 +60,8 @@
     background:rgba(255,255,255,.95); border:1px solid #ddd; border-radius:12px; padding:8px 12px;
   }
   .titlebar img{ max-height:48px; max-width:180px; object-fit:contain; border-radius:6px; border:1px solid #eee }
-  .titlebar .title{ min-width:240px; font-weight:800; font-size:15px; padding:4px 8px; }
+  .titlebar .title{ min-width:240px; font-weight:900; font-size:15px; padding:4px 8px; }
 
-  .corner-tag{
-    position:absolute; left:10px; bottom:10px; z-index:1100;
-    background:rgba(255,255,255,.95); border:1px solid #ddd; border-radius:10px;
-    padding:8px 12px; font-size:12px; font-weight:800; letter-spacing:.3px;
-  }
-
-  /* PILL BLOQUEO */
   .published-pill{
     position:absolute; left:10px; top:10px; z-index:1300;
     background:rgba(255,255,255,.95); border:1px solid #ddd;border-radius:999px;
@@ -121,26 +111,21 @@
   </div>
 </div>
 
-<div class="corner-tag" id="cornerTag">FUENTES DE SUMINISTRO Y SUBCONTRATACIONES</div>
-
-<!-- Librerías (sin crossOrigin para evitar bloqueos) -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script>
 /** ========= CONFIG ========= **/
-const UNLOCK_CODE = "1107"; // tu código
-const CACHE_BUST = "v=3";   // súbelo a v=4, v=5... si GitHub te cachea
+const UNLOCK_CODE = "1107";
+const CACHE_BUST = "v=5"; // si actualizas, cambia a v=6, v=7...
 
-// rutas RELATIVAS (porque canteras.html está en /TABLAS/)
 const PATH_EXCEL = "./data/fuentes.xlsx";
 const PATH_LOGO  = "./asset/LOGO.jpg";
-const PDF_DIR     = "./pdfs/";
+const PDF_DIR    = "./pdfs/";
 
-/** ========= UI / STATUS ========= **/
+/** ========= STATUS ========= **/
 const statusBox = document.getElementById('statusBox');
 function setStatus(msg){ statusBox.textContent = msg; }
-
 window.onerror = function(message, source, lineno, colno){
   setStatus("Error JS: " + message + "\n" + (source||"") + ":" + lineno + ":" + colno);
 };
@@ -158,7 +143,7 @@ function setPublishedMode(on){
   PUBLISHED_MODE = !!on;
   toolbarEl.style.display = PUBLISHED_MODE ? "none" : "flex";
   publishedPill.style.display = PUBLISHED_MODE ? "inline-flex" : "none";
-  if (obraMarker && obraMarker.dragging){
+  if(obraMarker && obraMarker.dragging){
     if(PUBLISHED_MODE) obraMarker.dragging.disable();
     else obraMarker.dragging.enable();
   }
@@ -168,7 +153,6 @@ function setPublishedMode(on){
     circle = null;
   }
 }
-
 btnUnlock.addEventListener('click', ()=>{
   const v = prompt("Código de seguridad (4 dígitos):");
   if(v === null) return;
@@ -180,17 +164,13 @@ btnUnlock.addEventListener('click', ()=>{
   }
 });
 
-/** ========= MAPA BASE ========= **/
+/** ========= MAPA ========= **/
 setStatus("Iniciando mapa…");
-
 const map = L.map('map',{zoomControl:true}).setView([40.2,-3.7],5.8);
 
-// grises
 const osmGray = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap'});
 const cartoGray = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap &copy; CARTO'});
-// color
 const topoColor = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17, attribution:'&copy; OpenTopoMap &copy; OpenStreetMap'});
-// orto
 const ortoPNOA = L.tileLayer('https://tms-pnoa-ma.idee.es/1.0.0/pnoa-ma/{z}/{x}/{-y}.jpeg',{maxZoom:20, attribution:'&copy; CNIG/IGN (PNOA MA)'});
 
 osmGray.addTo(map);
@@ -211,16 +191,6 @@ function setGrayscaleByLayer(layer){
 map.on('baselayerchange', (e)=> setGrayscaleByLayer(e.layer));
 setGrayscaleByLayer(osmGray);
 
-osmGray.on('tileerror', ()=>{
-  if(map.hasLayer(osmGray)){
-    setStatus("Fallo OSM. Cambiando a Carto…");
-    try{ map.removeLayer(osmGray); }catch(_){}
-    cartoGray.addTo(map);
-    setGrayscaleByLayer(cartoGray);
-  }
-});
-
-// panes
 const labelPane = map.createPane('labels'); labelPane.classList.add('label-pane');
 const obraPane = map.createPane('obraPane'); obraPane.style.zIndex = 1200;
 
@@ -256,7 +226,7 @@ function markerIcon(color='#333'){
 /** ========= OBRA ========= **/
 function createObraDivIcon(){
   const html = `
-    <div class="obra-pin" aria-label="Localización de la obra">
+    <div class="obra-pin">
       <div class="halo"></div>
       <svg class="pin" viewBox="0 0 24 24" width="38" height="38" xmlns="http://www.w3.org/2000/svg">
         <path fill="#d32f2f" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
@@ -267,9 +237,11 @@ function createObraDivIcon(){
 
 const destinoTextEl = document.getElementById('destinoText');
 let ORIGIN = { lat: 37.3891, lng: -5.9845, name: destinoTextEl.textContent || 'Obra' };
-let obraMarker = null;
-let circle = null;
+let obraMarker = L.marker([ORIGIN.lat, ORIGIN.lng], { icon: createObraDivIcon(), draggable:false, pane:'obraPane', zIndexOffset: 100000 })
+  .bindPopup(`<b>Obra</b><br>${ORIGIN.lat.toFixed(5)}, ${ORIGIN.lng.toFixed(5)}`)
+  .addTo(map);
 
+let circle = null;
 function haversineKm(lat1, lng1, lat2, lng2){
   const R=6371, toRad=d=>d*Math.PI/180;
   const dLat=toRad(lat2-lat1), dLon=toRad(lng2-lng1);
@@ -280,44 +252,7 @@ function gmapsDirUrl(destLat, destLng){
   return `https://www.google.com/maps/dir/?api=1&origin=${ORIGIN.lat},${ORIGIN.lng}&destination=${destLat},${destLng}&travelmode=driving`;
 }
 
-function refreshCircle(){
-  if(PUBLISHED_MODE) return;
-  const v=parseFloat(document.getElementById('km').value);
-  if(circle){ map.removeLayer(circle); circle=null; }
-  if(!isNaN(v) && v>0){
-    circle = L.circle([ORIGIN.lat,ORIGIN.lng], {radius: v*1000, color:'#444', weight:1, fillOpacity:0.05}).addTo(map);
-  }
-}
-
-function setOrigin(lat, lng, name=null){
-  if(PUBLISHED_MODE) return;
-  ORIGIN.lat = lat; ORIGIN.lng = lng;
-  if(name) ORIGIN.name = name;
-  destinoTextEl.textContent = name ? name : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-
-  if(!obraMarker){
-    obraMarker = L.marker([lat,lng], { icon: createObraDivIcon(), draggable:true, pane:'obraPane', zIndexOffset: 100000 })
-      .bindPopup(`<b>Obra</b><br>${destinoTextEl.textContent}`)
-      .addTo(map);
-    obraMarker.on('add', ()=>{ try{ obraMarker.bringToFront(); }catch(_){} });
-    obraMarker.on('dragend', ()=>{
-      if(PUBLISHED_MODE) return;
-      const p = obraMarker.getLatLng();
-      setOrigin(p.lat, p.lng);
-      obraMarker.setPopupContent(`<b>Obra</b><br>${destinoTextEl.textContent}`).openPopup();
-      refreshCircle();
-      applyFilters();
-    });
-  } else {
-    obraMarker.setLatLng([lat,lng]);
-    obraMarker.setPopupContent(`<b>Obra</b><br>${destinoTextEl.textContent}`);
-    try{ obraMarker.bringToFront(); }catch(_){}
-  }
-  refreshCircle();
-  applyFilters();
-}
-
-/** ========= DATOS / FILTROS ========= **/
+/** ========= FILTROS ========= **/
 let layers=[]; let bounds=[];
 let filters = {};
 const legendBody = document.getElementById('legendBody');
@@ -417,7 +352,6 @@ function applyFilters(){
     else{ if(map.hasLayer(Lr.marker)) map.removeLayer(Lr.marker); }
   });
   layoutLabels();
-  if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
 }
 
 function layoutLabels(){
@@ -466,7 +400,6 @@ function layoutLabels(){
   });
 
   meas.remove();
-  if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
 }
 
 map.on('moveend zoomend', layoutLabels);
@@ -477,14 +410,13 @@ function clearAll(){
   layers=[]; bounds=[];
 }
 
-/** ========= PDFs POR COLUMNA D ========= **/
+/** ========= PDF NOMBRE LIMPIO ========= **/
 const pdfExistCache = new Map();
 function cleanPdfName(s){
   if(!s) return "";
   let t = (""+s).trim();
-  // Si no trae extension, se la ponemos
+  t = t.replace(/^📄\s*/,'').trim();  // quita icono
   if(t && !t.toLowerCase().endsWith(".pdf")) t += ".pdf";
-  // Evita rutas raras
   t = t.replace(/\\/g,'/').split('/').pop();
   return t;
 }
@@ -528,9 +460,8 @@ async function geocode(text){
 }
 
 /** ========= PUNTOS ========= **/
-function addPoint({sheet, group, company, place, coord, pdfName}){
+function addPoint({sheet, group, subgrupo, company, place, coord, pdfName}){
   const pinColor = colorForGroup(sheet, group);
-
   const popup = L.popup({autoPan:true, closeButton:true});
   const marker = L.marker([coord.lat, coord.lng], {icon: markerIcon(pinColor)});
   marker.bindPopup(popup).addTo(map);
@@ -551,9 +482,12 @@ function addPoint({sheet, group, company, place, coord, pdfName}){
     }
 
     return `
-      <div style="font:14px Arial;max-width:520px">
+      <div style="font:14px Arial;max-width:560px">
         <h3 style="margin:0 0 4px 0;font-size:16px">${company}</h3>
-        <div style="font-size:12px;color:#444;margin:4px 0">Hoja: <b>${sheet}</b> · Grupo: <b>${group}</b></div>
+        <div style="font-size:12px;color:#444;margin:4px 0">
+          Hoja: <b>${sheet}</b> · Tipo: <b>${group}</b><br>
+          Subgrupo: <b>${subgrupo || '-'}</b>
+        </div>
         <div style="font-size:12px;color:#666">Posición: ${place}</div>
         <div style="font-size:12px;color:#111;margin-top:6px">Distancia a obra: <b>${kmTxt}</b></div>
         <div style="margin-top:6px"><a href="${url}" target="_blank" rel="noopener" style="font-size:12px;">🧭 Ver ruta en Google&nbsp;Maps</a></div>
@@ -569,7 +503,7 @@ function addPoint({sheet, group, company, place, coord, pdfName}){
   bounds.push([coord.lat, coord.lng]);
 }
 
-/** ========= CARGA LOGO ========= **/
+/** ========= LOGO ========= **/
 (function loadLogo(){
   const img = document.getElementById('logoImg');
   const url = `${PATH_LOGO}?${CACHE_BUST}`;
@@ -578,11 +512,11 @@ function addPoint({sheet, group, company, place, coord, pdfName}){
   img.src = url;
 })();
 
-/** ========= CARGA EXCEL AUTOMÁTICA ========= **/
+/** ========= CARGA EXCEL ========= **/
 async function loadExcelFromRepo(){
   setStatus("Cargando Excel desde GitHub…");
-
   const excelUrl = `${PATH_EXCEL}?${CACHE_BUST}`;
+
   let ab;
   try{
     const res = await fetch(excelUrl, {cache:"no-store"});
@@ -612,21 +546,24 @@ async function loadExcelFromRepo(){
     const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', blankrows:false});
     if(!rows || !rows.length) continue;
 
-    // detecta cabecera
+    // cabecera opcional
     const first = rows[0].map(v=>String(v).toLowerCase());
-    const looksHeader = first.join(' ').includes('grupo') || first.join(' ').includes('empresa') || first.join(' ').includes('posic');
+    const looksHeader = first.join(' ').includes('sumin') || first.join(' ').includes('grupo') || first.join(' ').includes('empresa') || first.join(' ').includes('posic');
     const dataRows = looksHeader ? rows.slice(1) : rows;
 
     if(!filters[alias]) filters[alias] = { __checked: true, groups: {} };
 
     for(const r of dataRows){
-      const groupRaw = (r[0] ?? '').toString().trim();
-      const company  = (r[1] ?? '').toString().trim();
-      const place    = (r[2] ?? '').toString().trim();
-      const pdfName  = (r[3] ?? '').toString().trim(); // <-- COLUMNA D
+      // ✅ Excel real: A=Tipo, B=Subgrupo, C=Empresa, D=Posición, E=PDF
+      const tipo     = (r[0] ?? '').toString().trim();
+      const subgrupo = (r[1] ?? '').toString().trim();
+      const company  = (r[2] ?? '').toString().trim();
+      const place    = (r[3] ?? '').toString().trim();
+      const pdfName  = (r[4] ?? '').toString().trim();
 
-      if(!company || !place) continue;
-      const groupKey = groupRaw || '(Sin grupo)';
+      if(!tipo || !company || !place) continue;
+
+      const groupKey = tipo;
       if(!(groupKey in filters[alias].groups)) filters[alias].groups[groupKey] = true;
 
       let coord = null;
@@ -638,7 +575,7 @@ async function loadExcelFromRepo(){
       }
       if(!coord) continue;
 
-      addPoint({sheet: alias, group: groupKey, company, place, coord, pdfName});
+      addPoint({sheet: alias, group: groupKey, subgrupo, company, place, coord, pdfName});
       added++;
     }
   }
@@ -656,40 +593,41 @@ async function loadExcelFromRepo(){
   setStatus(`OK: ${added} punto(s). Excel cargado desde ${PATH_EXCEL}`);
 }
 
-/** ========= CONTROLES EDICIÓN (solo si desbloqueas) ========= **/
+/** ========= CONTROLES (solo edición) ========= **/
 document.getElementById('btnFit').onclick = ()=>{
   if(PUBLISHED_MODE) return;
   const all = [...bounds];
-  if(obraMarker) all.push([ORIGIN.lat, ORIGIN.lng]);
+  all.push([ORIGIN.lat, ORIGIN.lng]);
   if(all.length) map.fitBounds(all,{padding:[20,20]});
-  else map.setView([ORIGIN.lat,ORIGIN.lng], 11);
 };
-
 document.getElementById('btnApplyKm').onclick = ()=>{
   if(PUBLISHED_MODE) return;
-  refreshCircle(); applyFilters();
+  const v=parseFloat(document.getElementById('km').value);
+  if(circle){ map.removeLayer(circle); circle=null; }
+  if(!isNaN(v) && v>0){
+    circle = L.circle([ORIGIN.lat,ORIGIN.lng], {radius: v*1000, color:'#444', weight:1, fillOpacity:0.05}).addTo(map);
+  }
+  applyFilters();
 };
 document.getElementById('btnClearKm').onclick = ()=>{
   if(PUBLISHED_MODE) return;
   document.getElementById('km').value='';
-  refreshCircle(); applyFilters();
+  if(circle){ map.removeLayer(circle); circle=null; }
+  applyFilters();
 };
 document.getElementById('km').addEventListener('input', ()=>{
   if(PUBLISHED_MODE) return;
-  refreshCircle(); applyFilters();
+  applyFilters();
 });
-
 document.getElementById('btnSetLatLon').onclick = ()=>{
   if(PUBLISHED_MODE) return;
   const val = (document.getElementById('inpLatLon').value||'').trim();
   const m = val.match(/^\s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*$/);
   if(!m){ setStatus('Formato lat,lon inválido. Ej: 37.3891,-5.9845'); return; }
-  const lat=parseFloat(m[1]), lng=parseFloat(m[3]);
-  if(!Number.isFinite(lat)||!Number.isFinite(lng)){ setStatus('lat/lon no numéricos.'); return; }
-  setOrigin(lat,lng);
-  map.setView([lat,lng], 13);
-  if(obraMarker) obraMarker.openPopup();
-  setStatus('Obra fijada por lat,lon.');
+  ORIGIN.lat = parseFloat(m[1]); ORIGIN.lng = parseFloat(m[3]);
+  map.setView([ORIGIN.lat, ORIGIN.lng], 13);
+  obraMarker.setLatLng([ORIGIN.lat, ORIGIN.lng]);
+  applyFilters();
 };
 
 let picking=false;
@@ -701,22 +639,20 @@ function setPicking(on){
   btnPick.style.borderColor = picking ? '#16a34a' : '#ddd';
 }
 btnPick.onclick = ()=>{ if(PUBLISHED_MODE) return; setPicking(!picking); };
-
 map.on('click', (e)=>{
   if(PUBLISHED_MODE) return;
   if(!picking) return;
-  setOrigin(e.latlng.lat, e.latlng.lng);
-  if(obraMarker) obraMarker.openPopup();
+  ORIGIN.lat = e.latlng.lat; ORIGIN.lng = e.latlng.lng;
+  obraMarker.setLatLng([ORIGIN.lat, ORIGIN.lng]);
   setPicking(false);
+  applyFilters();
   setStatus('Obra fijada por click.');
 });
 window.addEventListener('keydown', (ev)=>{ if(ev.key==='Escape' && picking) setPicking(false); });
 
 /** ========= ARRANQUE ========= **/
-setPublishedMode(true); // bloqueado por defecto
-// obra solo visible si entras en edición (si quieres visible siempre, dímelo y lo cambio)
+setPublishedMode(true);
 map.setView([ORIGIN.lat, ORIGIN.lng], 11);
-
 loadExcelFromRepo();
 </script>
 </body>
