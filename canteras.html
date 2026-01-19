@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fuentes de suministro · Mapa</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  #map{width:100%;height:100vh}
+  .grayscale .leaflet-tile-pane{filter:grayscale(100%)}
+
+  .toolbar{
+    position:absolute;left:50%;transform:translateX(-50%);top:8px;
+    background:rgba(255,255,255,.95);border:1px solid #ddd;border-radius:10px;
+    padding:8px 10px;font-size:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap; z-index:1000;
+  }
+  .toolbar input[type='number'], .toolbar input[type='text']{width:160px;padding:4px 6px;border:1px solid #ccc;border-radius:6px}
+  .toolbar button{padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer}
+  .toolbar button:hover{background:#f3f4f6}
+  .small{font-size:11px;color:#555}
+
+  .lbl{position:absolute;background:#fff;border:1px solid rgba(0,0,0,.25);border-radius:6px;padding:2px 6px;font-size:12px;color:#111;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;cursor:pointer}
+  .label-pane{z-index:600}
+
+  .legend{
+    position:absolute;right:10px;bottom:10px;background:rgba(255,255,255,.96);
+    border:1px solid #ddd;border-radius:12px;padding:10px;font-size:12px;min-width:300px;max-width:460px;z-index:1000;
+    max-height:55vh; overflow:auto;
+  }
+  .legend h4{margin:0 0 8px 0;font-size:13px}
+  .legend .sheet{border-top:1px solid #eee;padding-top:8px;margin-top:8px}
+  .legend .row{display:flex;align-items:center;gap:8px;margin:4px 0;flex-wrap:wrap}
+  .legend .swatch{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.2)}
+  .legend .sheet-title{display:flex;align-items:center;gap:8px;font-weight:700}
+  .legend .subhead{margin:8px 0 4px 0;font-weight:700;color:#111}
+  .legend .actions{margin-left:auto;display:flex;gap:6px}
+  .legend .actions button{padding:2px 6px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:11px}
+  .legend .actions button:hover{background:#f3f4f6}
+  .legend .hint{color:#666;font-size:11px;margin-top:6px}
+
+  .status{
+    position:absolute;right:10px;top:10px;background:rgba(255,255,255,.95);
+    border:1px solid #ddd;border-radius:10px;padding:8px 10px;font-size:12px;z-index:1000;max-width:820px;white-space:pre-wrap
+  }
+
+  .obra-pin { position: relative; width: 38px; height: 38px; transform: translate(-50%, -100%); pointer-events:auto; }
+  .obra-pin .pin { position:absolute; left:0; top:0; width:38px; height:38px; animation: breathe 1.6s ease-in-out infinite; filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
+  .obra-pin .halo { position:absolute; left:50%; top:50%; width:14px; height:14px; border-radius:50%; transform: translate(-50%, -20%); background: rgba(211,47,47,.25); animation: pulse 1.6s ease-out infinite; }
+  @keyframes breathe { 0% { transform: scale(0.92); opacity:.95 } 50%{ transform: scale(1.20); opacity:1 } 100%{ transform: scale(0.92); opacity:.95 } }
+  @keyframes pulse { 0% { box-shadow:0 0 0 0 rgba(211,47,47,.45); opacity:.9 } 70%{ box-shadow:0 0 0 22px rgba(211,47,47,0); opacity:.15 } 100%{ box-shadow:0 0 0 0 rgba(211,47,47,0); opacity:.9 } }
+
+  .titlebar{
+    position:absolute;
+    left:10px; bottom:62px; /* deja hueco para el aviso de abajo */
+    display:flex; flex-direction:column; align-items:flex-start; gap:6px;
+    z-index:1100;
+    background:rgba(255,255,255,.95); border:1px solid #ddd; border-radius:12px; padding:8px 12px;
+  }
+  .titlebar img{ max-height:48px; max-width:240px; object-fit:contain; border-radius:6px; border:1px solid #eee }
+  .titlebar .title{ min-width:240px; font-weight:900; font-size:15px; padding:4px 8px; }
+
+  .left-note{
+    position:absolute; left:10px; bottom:10px; z-index:1100;
+    background:rgba(255,255,255,.95); border:1px solid #ddd; border-radius:10px;
+    padding:8px 12px; font-size:12px; font-weight:900; letter-spacing:.2px;
+    max-width:520px;
+  }
+
+  .published-pill{
+    position:absolute; left:10px; top:10px; z-index:1300;
+    background:rgba(255,255,255,.95); border:1px solid #ddd;border-radius:999px;
+    padding:6px 10px; font-size:12px; font-weight:900;
+    display:inline-flex; gap:10px; align-items:center;
+  }
+  .published-pill .btn-unlock{
+    padding:6px 10px;border:1px solid #ddd;border-radius:999px;background:#fff;cursor:pointer;font-weight:900;font-size:12px;
+  }
+  .published-pill .btn-unlock:hover{background:#f3f4f6}
+</style>
+</head>
+
+<body>
+<div id="map"></div>
+
+<div class="published-pill" id="publishedPill">
+  <span>🔒 MODO PUBLICADO</span>
+  <button class="btn-unlock" id="btnUnlock">🔓 Editar</button>
+</div>
+
+<div class="titlebar" id="titlebar">
+  <img id="logoImg" alt="Logo" style="display:none"/>
+  <div id="mapTitle" class="title">FUENTES DE SUMINISTRO Y SUBCONTRATACIONES</div>
+</div>
+
+<div class="left-note" id="leftNote">CADA LOCALIZACION "Ꝿ" INCLUYE LA RUTA A OBRA Y LA CARTA DE COMPROMISO</div>
+
+<!-- toolbar solo visible si desbloqueas -->
+<div class="toolbar" id="toolbar" style="display:none">
+  <button id="btnPick">📍 Fijar obra por click</button>
+  <label>lat,lon: <input id="inpLatLon" type="text" placeholder="37.3891,-5.9845"></label>
+  <button id="btnSetLatLon">Aplicar</button>
+  <button id="btnFit">Zoom a todo</button>
+  <label>Radio (km): <input id="km" type="number" min="1" step="1" value=""></label>
+  <button id="btnApplyKm">Aplicar</button>
+  <button id="btnClearKm">Quitar radio</button>
+  <label><input id="toggleLabels" type="checkbox" checked> Etiquetas</label>
+  <span class="small">Obra: <b id="destinoText">-</b></span>
+</div>
+
+<div class="status" id="statusBox">Arrancando…</div>
+
+<div class="legend" id="legend">
+  <h4>Filtros</h4>
+  <div id="legendBody">
+    <div class="hint">Cargando Excel…</div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+<script>
+/** ========= CONFIG ========= **/
+const UNLOCK_CODE = "1107";
+const CACHE_BUST = "v=20";            // cambia a v=21, v=22... al actualizar
+const PATH_EXCEL = "./data/fuentes.xlsx";
+const PATH_LOGO  = "./asset/LOGO.jpg";
+const PDF_DIR    = "./pdfs/";
+
+/** ========= STATUS ========= **/
+const statusBox = document.getElementById('statusBox');
+function setStatus(msg){ statusBox.textContent = msg; }
+window.onerror = function(message, source, lineno, colno){
+  setStatus("Error JS: " + message + "\n" + (source||"") + ":" + lineno + ":" + colno);
+};
+window.addEventListener('unhandledrejection', (e)=>{
+  setStatus("Promesa rechazada: " + (e.reason && (e.reason.stack || e.reason.message) || e.reason));
+});
+
+/** ========= BLOQUEO ========= **/
+let PUBLISHED_MODE = true;
+const toolbarEl = document.getElementById('toolbar');
+const publishedPill = document.getElementById('publishedPill');
+const btnUnlock = document.getElementById('btnUnlock');
+
+function setPublishedMode(on){
+  PUBLISHED_MODE = !!on;
+  toolbarEl.style.display = PUBLISHED_MODE ? "none" : "flex";
+  publishedPill.style.display = PUBLISHED_MODE ? "inline-flex" : "none";
+  if(obraMarker && obraMarker.dragging){
+    if(PUBLISHED_MODE) obraMarker.dragging.disable();
+    else obraMarker.dragging.enable();
+  }
+  if(PUBLISHED_MODE) setPicking(false);
+  if(PUBLISHED_MODE && circle){
+    try{ map.removeLayer(circle); }catch(_){}
+    circle = null;
+  }
+}
+btnUnlock.addEventListener('click', ()=>{
+  const v = prompt("Código de seguridad (4 dígitos):");
+  if(v === null) return;
+  if(String(v).trim() === UNLOCK_CODE){
+    setPublishedMode(false);
+    setStatus("Modo edición (solo local). No se sube nada a GitHub.");
+  }else{
+    setStatus("Código incorrecto. Sigues en modo publicado.");
+  }
+});
+
+/** ========= MAPA ========= **/
+setStatus("Iniciando mapa…");
+const map = L.map('map',{zoomControl:true}).setView([40.2,-3.7],5.8);
+
+const osmGray = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap'});
+const cartoGray = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap &copy; CARTO'});
+const topoColor = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17, attribution:'&copy; OpenTopoMap &copy; OpenStreetMap'});
+const ortoPNOA = L.tileLayer('https://tms-pnoa-ma.idee.es/1.0.0/pnoa-ma/{z}/{x}/{-y}.jpeg',{maxZoom:20, attribution:'&copy; CNIG/IGN (PNOA MA)'});
+
+osmGray.addTo(map);
+document.body.classList.add('grayscale');
+
+const baseLayers = {
+  'OSM (gris)': osmGray,
+  'Carto (gris)': cartoGray,
+  'Topográfico (color)': topoColor,
+  'Ortofoto (PNOA MA)': ortoPNOA
+};
+L.control.layers(baseLayers, null, { position:'topleft', collapsed:true }).addTo(map);
+
+function setGrayscaleByLayer(layer){
+  const isGray = (layer === osmGray) || (layer === cartoGray);
+  document.body.classList.toggle('grayscale', !!isGray);
+}
+map.on('baselayerchange', (e)=> setGrayscaleByLayer(e.layer));
+setGrayscaleByLayer(osmGray);
+
+const labelPane = map.createPane('labels'); labelPane.classList.add('label-pane');
+const obraPane = map.createPane('obraPane'); obraPane.style.zIndex = 1200;
+
+/** ========= COLORES ========= **/
+const CATEGORY_COLORS = {
+  'Suministradores': '#2e7d32',
+  'Subcontratistas': '#1565c0',
+  'Gestores de Residuos': '#ef6c00'
+};
+function sheetCategoryColor(sheet){ return CATEGORY_COLORS[sheet] || '#333'; }
+function catColorAlpha(sheet, alpha){
+  const hex = sheetCategoryColor(sheet).replace('#','');
+  const r=parseInt(hex.substring(0,2),16), g=parseInt(hex.substring(2,4),16), b=parseInt(hex.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+const groupColorMap = {};
+function hashCode(str){ let h=0; for(let i=0;i<str.length;i++){ h=(h<<5)-h+str.charCodeAt(i); h|=0; } return Math.abs(h); }
+function hsvToRgb(h,s,v){ let f=(n,k=(n+h/60)%6)=>v-v*s*Math.max(Math.min(k,4-k,1),0); return [f(5),f(3),f(1)]; }
+function rgbToHex(r,g,b){ const c=x=>('0'+Math.round(x*255).toString(16)).slice(-2); return `#${c(r)}${c(g)}${c(b)}`; }
+function colorForGroup(sheet, group){
+  const key = sheet+'::'+group;
+  if(groupColorMap[key]) return groupColorMap[key];
+  const baseHue = (hashCode(key)%360);
+  const [r,g,b] = hsvToRgb(baseHue, 0.70, 0.95);
+  const hex = rgbToHex(r,g,b);
+  groupColorMap[key] = hex; return hex;
+}
+function markerIcon(color='#333'){
+  const svg=encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='"+color+"' d='M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z'/></svg>");
+  return L.icon({iconUrl:'data:image/svg+xml;charset=UTF-8,'+svg,iconSize:[28,28],iconAnchor:[14,28],popupAnchor:[0,-28]});
+}
+
+/** ========= UTILS ========= **/
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function slug(s){ return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+function parseLatLon(str){
+  const m = (str||"").toString().trim().match(/^\s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*$/);
+  if(!m) return null;
+  const lat=parseFloat(m[1]), lng=parseFloat(m[3]);
+  if(!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return {lat,lng};
+}
+function haversineKm(lat1, lng1, lat2, lng2){
+  const R=6371, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lng2-lng1);
+  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+/** ========= OBRA ========= **/
+function createObraDivIcon(){
+  const html = `
+    <div class="obra-pin">
+      <div class="halo"></div>
+      <svg class="pin" viewBox="0 0 24 24" width="38" height="38" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#d32f2f" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+      </svg>
+    </div>`;
+  return L.divIcon({ className:'', html, iconSize:[0,0], iconAnchor:[0,0], popupAnchor:[0,-28] });
+}
+
+const destinoTextEl = document.getElementById('destinoText');
+let ORIGIN = { lat: 37.3891, lng: -5.9845, name: "Obra" };
+
+let obraMarker = L.marker([ORIGIN.lat, ORIGIN.lng], {
+  icon: createObraDivIcon(),
+  draggable:false,
+  pane:'obraPane',
+  zIndexOffset: 100000
+}).bindPopup(`<b>${ORIGIN.name}</b><br>${ORIGIN.lat.toFixed(5)}, ${ORIGIN.lng.toFixed(5)}`)
+  .addTo(map);
+
+let circle = null;
+
+function gmapsDirUrl(destLat, destLng){
+  return `https://www.google.com/maps/dir/?api=1&origin=${ORIGIN.lat},${ORIGIN.lng}&destination=${destLat},${destLng}&travelmode=driving`;
+}
+function setOrigin(lat,lng,name){
+  ORIGIN.lat = lat; ORIGIN.lng = lng;
+  if(name) ORIGIN.name = name;
+  obraMarker.setLatLng([ORIGIN.lat, ORIGIN.lng]);
+  obraMarker.setPopupContent(`<b>${ORIGIN.name}</b><br>${ORIGIN.lat.toFixed(5)}, ${ORIGIN.lng.toFixed(5)}`);
+  destinoTextEl.textContent = `${ORIGIN.name}: ${ORIGIN.lat.toFixed(5)}, ${ORIGIN.lng.toFixed(5)}`;
+}
+
+/** ========= GEOCODING ========= **/
+let geoCache={}; const GEO_CACHE_KEY='geoCacheV3';
+try{ geoCache=JSON.parse(localStorage.getItem(GEO_CACHE_KEY)||'{}'); }catch(e){ geoCache={}; }
+
+async function geocode(text){
+  const key=slug(text);
+  if(geoCache[key]) return geoCache[key];
+  await sleep(250);
+  const url=new URL('https://nominatim.openstreetmap.org/search');
+  url.searchParams.set('format','json');
+  url.searchParams.set('limit','1');
+  url.searchParams.set('q', text+', España');
+  const res=await fetch(url,{headers:{'Accept':'application/json'}});
+  if(!res.ok) return null;
+  const data=await res.json();
+  if(Array.isArray(data)&&data[0]){
+    const r={lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
+    geoCache[key]=r;
+    localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(geoCache));
+    return r;
+  }
+  return null;
+}
+
+/** ========= ORIGEN DESDE KML/KMZ ========= **/
+async function originFromKmlText(kmlText){
+  const doc = new DOMParser().parseFromString(kmlText, "text/xml");
+  const coordsEl =
+    doc.querySelector("Placemark Point coordinates") ||
+    doc.querySelector("Point coordinates") ||
+    doc.querySelector("coordinates");
+  if(!coordsEl) return null;
+  const raw = coordsEl.textContent.trim();
+  const first = raw.split(/\s+/)[0];
+  const parts = first.split(",");
+  if(parts.length < 2) return null;
+  const lng = parseFloat(parts[0]);
+  const lat = parseFloat(parts[1]);
+  if(!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return {lat,lng};
+}
+async function originFromKmlUrl(url){
+  const res = await fetch(url, {cache:"no-store"});
+  if(!res.ok) return null;
+  const text = await res.text();
+  return await originFromKmlText(text);
+}
+async function originFromKmzUrl(url){
+  const res = await fetch(url, {cache:"no-store"});
+  if(!res.ok) return null;
+  const ab = await res.arrayBuffer();
+  const zip = await JSZip.loadAsync(ab);
+  const kmlName = Object.keys(zip.files).find(n => n.toLowerCase().endsWith(".kml"));
+  if(!kmlName) return null;
+  const kmlText = await zip.files[kmlName].async("text");
+  return await originFromKmlText(kmlText);
+}
+async function resolveOriginValue(textValue, latValue, lonValue){
+  const t = (textValue||"").toString().trim();
+  const lat = parseFloat((latValue||"").toString().trim());
+  const lon = parseFloat((lonValue||"").toString().trim());
+
+  // 1) lat/lon explícitas
+  if(Number.isFinite(lat) && Number.isFinite(lon)){
+    return {lat, lng:lon, name: t || ORIGIN.name};
+  }
+
+  // 2) coordenadas en texto "lat,lon"
+  const ll = parseLatLon(t);
+  if(ll) return {lat: ll.lat, lng: ll.lng, name: ORIGIN.name};
+
+  // 3) KML/KMZ por ruta del repo o URL
+  const lower = t.toLowerCase();
+  if(lower.endsWith(".kml")){
+    const url = (t.startsWith("http") ? t : `./${t.replace(/^\.\//,'')}`) + `?${CACHE_BUST}`;
+    const p = await originFromKmlUrl(url);
+    if(p) return {lat:p.lat, lng:p.lng, name: ORIGIN.name};
+  }
+  if(lower.endsWith(".kmz")){
+    const url = (t.startsWith("http") ? t : `./${t.replace(/^\.\//,'')}`) + `?${CACHE_BUST}`;
+    const p = await originFromKmzUrl(url);
+    if(p) return {lat:p.lat, lng:p.lng, name: ORIGIN.name};
+  }
+
+  // 4) texto -> geocoding
+  if(t){
+    const p = await geocode(t);
+    if(p) return {lat:p.lat, lng:p.lng, name: t};
+  }
+  return null;
+}
+
+/** ========= LOCALIZACION EN EXCEL (al final de la tabla) ========= **/
+function normCell(v){ return slug((v ?? '').toString()); }
+function findLocationBlock(rows){
+  const isLoc = v => {
+    const s = normCell(v);
+    return s === 'localizacion' || s === 'ubicacion' || s === 'localizacionobra' || s === 'ubicacionobra';
+  };
+  const isLat = v => normCell(v) === 'latitud';
+  const isLon = v => normCell(v) === 'longitud';
+
+  for(let i=0;i<rows.length;i++){
+    const r = rows[i] || [];
+    const locPos = r.findIndex(isLoc);
+    if(locPos === -1) continue;
+
+    const latPos = r.findIndex(isLat);
+    const lonPos = r.findIndex(isLon);
+
+    // Caso 1: fila cabecera: LOCALIZACION | LATITUD | LONGITUD (en cualquier columna)
+    if(latPos !== -1 || lonPos !== -1){
+      const next = rows[i+1] || [];
+      return {
+        textValue: next[locPos] ?? '',
+        latValue:  (latPos !== -1 ? (next[latPos] ?? '') : ''),
+        lonValue:  (lonPos !== -1 ? (next[lonPos] ?? '') : ''),
+        cutIndex: i
+      };
+    }
+
+    // Caso 2: fila directa: LOCALIZACION | <texto> | <lat> | <lon>
+    return {
+      textValue: r[locPos+1] ?? '',
+      latValue:  r[locPos+2] ?? '',
+      lonValue:  r[locPos+3] ?? '',
+      cutIndex: i
+    };
+  }
+  return null;
+}
+
+}
+
+/** ========= PDF nombre limpio ========= **/
+const pdfExistCache = new Map();
+function cleanPdfName(s){
+  if(!s) return "";
+  let t = (""+s).trim();
+  t = t.replace(/^📄\s*/,'').trim();
+  if(t && !t.toLowerCase().endsWith(".pdf")) t += ".pdf";
+  t = t.replace(/\\/g,'/').split('/').pop();
+  return t;
+}
+async function pdfExists(url){
+  if(pdfExistCache.has(url)) return pdfExistCache.get(url);
+  try{
+    const r = await fetch(url, {method:"HEAD", cache:"no-store"});
+    const ok = r.ok;
+    pdfExistCache.set(url, ok);
+    return ok;
+  }catch(_){
+    pdfExistCache.set(url, false);
+    return false;
+  }
+}
+
+/** ========= FILTROS ========= **/
+let layers=[]; let bounds=[];
+let filters = {};
+const legendBody = document.getElementById('legendBody');
+
+function normalizeSheetName(name){
+  const s = (name||"").toString().toLowerCase();
+  if(s.includes('sumin')) return 'Suministradores';
+  if(s.includes('subc'))  return 'Subcontratistas';
+  if(s.includes('gest'))  return 'Gestores de Residuos';
+  return name || 'Hoja';
+}
+
+function renderLegend(){
+  const sheets = Object.keys(filters);
+  if(!sheets.length){
+    legendBody.innerHTML = `<div class="hint">No hay datos.</div>`;
+    return;
+  }
+  const frag = [];
+  sheets.forEach(sheet=>{
+    const f = filters[sheet];
+    const sheetChecked = !!f.__checked;
+    const groups = f.groups || {};
+    const subs = f.subgroups || {};
+
+    frag.push(`
+      <div class="sheet">
+        <div class="sheet-title">
+          <label><input type="checkbox" class="chk-sheet" data-sheet="${sheet}" ${sheetChecked?'checked':''}> ${sheet}</label>
+          <div class="actions">
+            <button class="btn-all" data-sheet="${sheet}">Todos</button>
+            <button class="btn-none" data-sheet="${sheet}">Ninguno</button>
+          </div>
+        </div>
+
+        <div class="subhead">Tipo (Col A)</div>
+    `);
+
+    Object.keys(groups).sort().forEach(g=>{
+      const on = !!groups[g];
+      const gcol = colorForGroup(sheet,g);
+      frag.push(`
+        <div class="row">
+          <span class="swatch" style="background:${gcol}"></span>
+          <label style="flex:1 1 auto">
+            <input type="checkbox" class="chk-group" data-sheet="${sheet}" data-group="${g}" ${on?'checked':''}>
+            ${g}
+          </label>
+        </div>
+      `);
+    });
+
+    frag.push(`<div class="subhead">Subgrupo (Col B)</div>`);
+
+    Object.keys(subs).sort().forEach(sg=>{
+      const on = !!subs[sg];
+      frag.push(`
+        <div class="row">
+          <span class="swatch" style="background:#fff"></span>
+          <label style="flex:1 1 auto">
+            <input type="checkbox" class="chk-sub" data-sheet="${sheet}" data-sub="${sg}" ${on?'checked':''}>
+            ${sg}
+          </label>
+        </div>
+      `);
+    });
+
+    frag.push(`</div>`);
+  });
+
+  legendBody.innerHTML = frag.join('');
+
+  function recomputeSheetChecked(sheet){
+    const f = filters[sheet];
+    const anyGroup = Object.values(f.groups||{}).some(v=>v);
+    const anySub = Object.values(f.subgroups||{}).some(v=>v);
+    f.__checked = anyGroup && anySub;
+  }
+
+  legendBody.querySelectorAll('.chk-sheet').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      const s=el.dataset.sheet; const val=el.checked;
+      const f = filters[s];
+      f.__checked = val;
+      Object.keys(f.groups).forEach(g=> f.groups[g]=val);
+      Object.keys(f.subgroups).forEach(g=> f.subgroups[g]=val);
+      applyFilters(); renderLegend();
+    });
+  });
+
+  legendBody.querySelectorAll('.chk-group').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      const s=el.dataset.sheet; const g=el.dataset.group;
+      filters[s].groups[g] = el.checked;
+      recomputeSheetChecked(s);
+      applyFilters(); renderLegend();
+    });
+  });
+
+  legendBody.querySelectorAll('.chk-sub').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      const s=el.dataset.sheet; const sg=el.dataset.sub;
+      filters[s].subgroups[sg] = el.checked;
+      recomputeSheetChecked(s);
+      applyFilters(); renderLegend();
+    });
+  });
+
+  legendBody.querySelectorAll('.btn-all').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const s=btn.dataset.sheet;
+      const f=filters[s];
+      f.__checked = true;
+      Object.keys(f.groups).forEach(g=> f.groups[g]=true);
+      Object.keys(f.subgroups).forEach(g=> f.subgroups[g]=true);
+      applyFilters(); renderLegend();
+    });
+  });
+
+  legendBody.querySelectorAll('.btn-none').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const s=btn.dataset.sheet;
+      const f=filters[s];
+      f.__checked = false;
+      Object.keys(f.groups).forEach(g=> f.groups[g]=false);
+      Object.keys(f.subgroups).forEach(g=> f.subgroups[g]=false);
+      applyFilters(); renderLegend();
+    });
+  });
+}
+
+function inKmRadius(lat2,lng2){
+  const v=parseFloat(document.getElementById('km').value);
+  if(isNaN(v) || v<=0) return true;
+  return haversineKm(ORIGIN.lat, ORIGIN.lng, lat2, lng2) <= v + 1e-9;
+}
+
+function applyFilters(){
+  layers.forEach(Lr=>{
+    const f = filters[Lr.sheet];
+    const groupOn = f?.groups?.[Lr.group] ?? true;
+    const subOn   = f?.subgroups?.[Lr.subgrupo] ?? true;
+    const radiusOk = inKmRadius(Lr.lat, Lr.lng);
+    const show = groupOn && subOn && radiusOk;
+
+    if(show){ if(!map.hasLayer(Lr.marker)) Lr.marker.addTo(map); }
+    else{ if(map.hasLayer(Lr.marker)) map.removeLayer(Lr.marker); }
+  });
+  layoutLabels();
+}
+
+function layoutLabels(){
+  document.querySelectorAll('.lbl').forEach(el=>el.remove());
+  const toggle = document.getElementById('toggleLabels');
+  if(toggle && !toggle.checked) return;
+
+  const vis=layers.filter(Lr=> map.hasLayer(Lr.marker));
+  const pane=document.querySelector('.label-pane');
+  const occ=[]; function ov(a,b){return !(b.x>a.x+a.w || b.x+b.w<a.x || b.y>a.y+a.h || b.y+b.h<a.y);}
+  const meas=document.createElement('div');
+  meas.className='lbl';
+  meas.style.left='-1000px';
+  meas.style.top='-1000px';
+  meas.style.visibility='hidden';
+  pane.appendChild(meas);
+
+  vis.forEach(Lr=>{
+    const pt=map.latLngToLayerPoint([Lr.lat,Lr.lng]);
+    meas.textContent=Lr.title||'·';
+    const bb=meas.getBoundingClientRect();
+    const w=bb.width,h=bb.height;
+    const steps=[[0,-18],[18,-18],[18,0],[18,18],[0,18],[-18,18],[-18,0],[-18,-18]];
+    let placed=null;
+
+    for(let r=1;r<=7 && !placed;r++){
+      for(let k=0;k<steps.length && !placed;k++){
+        const x=pt.x+steps[k][0]*r, y=pt.y+steps[k][1]*r;
+        const rect={x,y,w:w+12,h:h+8};
+        const pad={x:x-4,y:y-4,w:w+20,h:h+16};
+        if(occ.every(rr=>!ov(pad,rr))) placed=rect;
+      }
+    }
+    if(!placed) placed={x:pt.x+12,y:pt.y-(h+20),w:w+12,h:h+8};
+    occ.push(placed);
+
+    const div=document.createElement('div');
+    div.className='lbl';
+    div.style.left=placed.x+'px';
+    div.style.top=placed.y+'px';
+    div.style.borderColor = sheetCategoryColor(Lr.sheet);
+    div.style.background = catColorAlpha(Lr.sheet, 0.28);
+    div.textContent=Lr.title||'·';
+    div.onclick=()=>{ map.openPopup(Lr.popup, [Lr.lat,Lr.lng]); };
+    pane.appendChild(div);
+  });
+
+  meas.remove();
+}
+
+map.on('moveend zoomend', layoutLabels);
+window.addEventListener('resize', layoutLabels);
+
+function clearAll(){
+  layers.forEach(Lr=> { try{ map.removeLayer(Lr.marker); }catch(_){} });
+  layers=[]; bounds=[];
+}
+
+/** ========= PUNTOS ========= **/
+function addPoint({sheet, group, subgrupo, company, place, coord, pdfName}){
+  const pinColor = colorForGroup(sheet, group);
+  const popup = L.popup({autoPan:true, closeButton:true});
+  const marker = L.marker([coord.lat, coord.lng], {icon: markerIcon(pinColor)});
+  marker.bindPopup(popup).addTo(map);
+
+  async function popupHtml(){
+    const km = haversineKm(ORIGIN.lat, ORIGIN.lng, coord.lat, coord.lng);
+    const kmTxt = (km >= 100) ? `${km.toFixed(0)} km` : `${km.toFixed(1)} km`;
+    const url = gmapsDirUrl(coord.lat, coord.lng);
+
+    const pdfClean = cleanPdfName(pdfName);
+    const pdfUrl = pdfClean ? `${PDF_DIR}${encodeURIComponent(pdfClean)}?${CACHE_BUST}` : "";
+    let pdfBlock = `<span style="color:#999">Sin PDF asociado</span>`;
+    if(pdfUrl){
+      const ok = await pdfExists(pdfUrl);
+      pdfBlock = ok
+        ? `<ul style="margin:4px 0 0 16px;padding:0"><li style="margin:2px 0"><a href="${pdfUrl}" target="_blank" rel="noopener">📄 ${pdfClean}</a></li></ul>`
+        : `<span style="color:#999">PDF no encontrado: ${pdfClean}</span>`;
+    }
+
+    return `
+      <div style="font:14px Arial;max-width:620px">
+        <h3 style="margin:0 0 4px 0;font-size:16px">${company} <span style="font-weight:800">Ꝿ</span></h3>
+        <div style="font-size:12px;color:#444;margin:4px 0">
+          Hoja: <b>${sheet}</b><br>
+          Tipo (A): <b>${group}</b><br>
+          Subgrupo (B): <b>${subgrupo || '-'}</b>
+        </div>
+        <div style="font-size:12px;color:#666">Posición: ${place}</div>
+        <div style="font-size:12px;color:#111;margin-top:6px">Distancia a obra: <b>${kmTxt}</b></div>
+        <div style="margin-top:6px"><a href="${url}" target="_blank" rel="noopener" style="font-size:12px;">🧭 Ver ruta a obra (Google Maps)</a></div>
+        <div style="font-size:12px;color:#111;margin-top:8px">Carta de compromiso:</div>
+        ${pdfBlock}
+        <div style="font-size:11px;color:#666;margin-top:8px">Coord: ${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}</div>
+      </div>`;
+  }
+
+  marker.on('popupopen', async ()=>{ popup.setContent("Cargando…"); popup.setContent(await popupHtml()); });
+
+  layers.push({ marker, popup, lat:coord.lat, lng:coord.lng, title:company, sheet, group, subgrupo });
+  bounds.push([coord.lat, coord.lng]);
+}
+
+/** ========= LOGO ========= **/
+(function loadLogo(){
+  const img = document.getElementById('logoImg');
+  const url = `${PATH_LOGO}?${CACHE_BUST}`;
+  img.onload = ()=>{ img.style.display='block'; };
+  img.onerror = ()=>{ img.style.display='none'; };
+  img.src = url;
+})();
+function fixCoordNumber(x, isLat){
+  // Convierte formatos raros:
+  // - "376.708.835" -> 376708835 -> 37.6708835 (divide entre 1e7)
+  // - "-40.020.080" -> -40020080 -> -4.0020080 (divide entre 1e7)
+  if(x === null || x === undefined) return null;
+
+  let s = String(x).trim();
+  if(!s) return null;
+
+  // si tiene comas decimales, pásalo a punto
+  s = s.replace(',', '.');
+
+  // si tiene muchos puntos como separador de miles, quítalos
+  // (deja solo el primer "-" si existe)
+  s = s.replace(/(?!^-)\./g, '');
+
+  const n = Number(s);
+  if(!Number.isFinite(n)) return null;
+
+  // si es enorme, asume microgrados (1e7)
+  const abs = Math.abs(n);
+  if(abs > 200) {
+    const m = n / 1e7;
+    // validación básica
+    if(isLat && Math.abs(m) <= 90) return m;
+    if(!isLat && Math.abs(m) <= 180) return m;
+  }
+
+  // si ya parece grados, devuelve tal cual
+  return n;
+}
+
+async function readOriginFromSheet2(wb){
+  // Prioridad: hoja llamada "Hoja2", "LOCALIZACION", "CONFIG", "OBRA"
+  const candidates = wb.SheetNames.slice();
+  const pick = candidates.find(n => n.toLowerCase() === 'hoja2')
+    || candidates.find(n => n.toLowerCase().includes('local'))
+    || candidates.find(n => n.toLowerCase().includes('config'))
+    || candidates.find(n => n.toLowerCase().includes('obra'));
+
+  if(!pick) return null;
+
+  const sh = wb.Sheets[pick];
+  const rows = XLSX.utils.sheet_to_json(sh, {header:1, defval:'', blankrows:false});
+  if(!rows || rows.length < 2) return null;
+
+  // buscamos la cabecera en cualquier fila
+  let headerRow = -1;
+  let colLoc=-1, colLat=-1, colLon=-1;
+
+  for(let i=0;i<rows.length;i++){
+    const r = rows[i] || [];
+    const norm = r.map(v => slug(String(v)));
+    colLoc = norm.findIndex(v => v === 'localizacion' || v === 'ubicacion');
+    colLat = norm.findIndex(v => v === 'latitud' || v === 'lat');
+    colLon = norm.findIndex(v => v === 'longitud' || v === 'lon' || v === 'lng');
+    if(colLoc !== -1 && (colLat !== -1 || colLon !== -1)){
+      headerRow = i;
+      break;
+    }
+  }
+  if(headerRow === -1) return null;
+
+  const data = rows[headerRow+1] || [];
+  const textValue = (data[colLoc] ?? '').toString().trim();
+  const latRaw = (colLat !== -1 ? data[colLat] : '');
+  const lonRaw = (colLon !== -1 ? data[colLon] : '');
+
+  const lat = fixCoordNumber(latRaw, true);
+  const lon = fixCoordNumber(lonRaw, false);
+
+  // 1) si hay lat/lon, úsalo
+  if(Number.isFinite(lat) && Number.isFinite(lon)){
+    return { lat, lng: lon, name: textValue || 'Obra' };
+  }
+
+  // 2) si no, intenta "lat,lon" en el texto
+  const ll = parseLatLon(textValue);
+  if(ll) return { lat: ll.lat, lng: ll.lng, name: 'Obra' };
+
+  // 3) si no, geocodifica el texto
+  if(textValue){
+    const p = await geocode(textValue);
+    if(p) return { lat: p.lat, lng: p.lng, name: textValue };
+  }
+
+  return null;
+}
+
+/** ========= CARGA EXCEL ========= **/
+async function loadExcelFromRepo(){
+  setStatus("Cargando Excel desde GitHub…");
+  const excelUrl = `${PATH_EXCEL}?${CACHE_BUST}`;
+
+  let ab;
+  try{
+    const res = await fetch(excelUrl, {cache:"no-store"});
+    if(!res.ok) throw new Error("No se pudo descargar el Excel: " + res.status + " " + res.statusText);
+    ab = await res.arrayBuffer();
+  }catch(err){
+    setStatus("ERROR cargando Excel.\n" + err.message + "\nURL: " + excelUrl);
+    return;
+  }
+
+  let wb;
+  try{
+    wb = XLSX.read(ab, {type:'array'});
+  }catch(err){
+    setStatus("ERROR leyendo el Excel (XLSX.read).\n" + (err.message||err));
+    return;
+  }
+
+  clearAll();
+  filters = {};
+  let added = 0;
+  let originSet = false;
+
+  for(const rawName of wb.SheetNames){
+    const sheet = wb.Sheets[rawName]; if(!sheet) continue;
+
+    const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', blankrows:false});
+    if(!rows || !rows.length) continue;
+
+    // 1) buscar bloque LOCALIZACION al final (si existe)
+    const loc = findLocationBlock(rows);
+    let effectiveRows = rows;
+    if(loc && !originSet){
+      try{
+        const resolved = await resolveOriginValue(loc.textValue, loc.latValue, loc.lonValue);
+        if(resolved){
+          setOrigin(resolved.lat, resolved.lng, resolved.name || ORIGIN.name);
+          map.setView([ORIGIN.lat, ORIGIN.lng], 11);
+          originSet = true;
+        }
+      }catch(e){ console.warn("No se pudo resolver ORIGEN", e); }
+    }
+    if(loc && loc.cutIndex >= 0){
+      effectiveRows = rows.slice(0, loc.cutIndex); // no procesar lo de abajo
+    }
+
+    // 2) normaliza nombre de hoja para mostrar
+    const alias = normalizeSheetName(rawName);
+
+    // Detecta si primera fila es cabecera
+    const first = (effectiveRows[0]||[]).map(v=>String(v).toLowerCase());
+    const looksHeader = first.join(' ').includes('empresa') || first.join(' ').includes('posic') || first.join(' ').includes('pdf');
+
+    const dataRows = looksHeader ? effectiveRows.slice(1) : effectiveRows;
+
+    if(!filters[alias]) filters[alias] = { __checked: true, groups: {}, subgroups: {} };
+
+    for(const r of dataRows){
+      // Saltar filas vacías o filas de control
+      const rowText = r.map(normCell).join(' ');
+      if(rowText.includes('localizacion') && rowText.includes('latitud')) break;
+
+      // A=Tipo, B=Subgrupo, C=Empresa, D=Posición, E=PDF
+      const tipo     = (r[0] ?? '').toString().trim();
+      const subgrupo = (r[1] ?? '').toString().trim();
+      const company  = (r[2] ?? '').toString().trim();
+      const place    = (r[3] ?? '').toString().trim();
+      const pdfName  = (r[4] ?? '').toString().trim();
+
+      if(!tipo || !company || !place) continue;
+
+      const groupKey = tipo;
+      if(!(groupKey in filters[alias].groups)) filters[alias].groups[groupKey] = true;
+
+      const subKey = subgrupo || '(Sin subgrupo)';
+      if(!(subKey in filters[alias].subgroups)) filters[alias].subgroups[subKey] = true;
+
+      let coord = null;
+      const maybeCoord = place.match(/^\s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*$/);
+      if(maybeCoord){
+        coord = {lat: parseFloat(maybeCoord[1]), lng: parseFloat(maybeCoord[3])};
+      } else {
+        coord = await geocode(place);
+      }
+      if(!coord) continue;
+
+      addPoint({sheet: alias, group: groupKey, subgrupo: subKey, company, place, coord, pdfName});
+      added++;
+    }
+  }
+
+  renderLegend();
+  applyFilters();
+
+  if(added && bounds.length){
+    map.fitBounds(bounds, {padding:[20,20]});
+  }else{
+    map.setView([ORIGIN.lat, ORIGIN.lng], 11);
+  }
+
+  layoutLabels();
+  setStatus(`OK: ${added} punto(s). Excel cargado desde ${PATH_EXCEL}\nObra: ${ORIGIN.lat.toFixed(5)}, ${ORIGIN.lng.toFixed(5)}`);
+}
+
+/** ========= EDICION (solo si desbloqueas) ========= **/
+document.getElementById('btnFit').onclick = ()=>{
+  if(PUBLISHED_MODE) return;
+  const all = [...bounds];
+  all.push([ORIGIN.lat, ORIGIN.lng]);
+  if(all.length) map.fitBounds(all,{padding:[20,20]});
+};
+document.getElementById('btnApplyKm').onclick = ()=>{
+  if(PUBLISHED_MODE) return;
+  const v=parseFloat(document.getElementById('km').value);
+  if(circle){ map.removeLayer(circle); circle=null; }
+  if(!isNaN(v) && v>0){
+    circle = L.circle([ORIGIN.lat,ORIGIN.lng], {radius: v*1000, color:'#444', weight:1, fillOpacity:0.05}).addTo(map);
+  }
+  applyFilters();
+};
+document.getElementById('btnClearKm').onclick = ()=>{
+  if(PUBLISHED_MODE) return;
+  document.getElementById('km').value='';
+  if(circle){ map.removeLayer(circle); circle=null; }
+  applyFilters();
+};
+document.getElementById('btnSetLatLon').onclick = ()=>{
+  if(PUBLISHED_MODE) return;
+  const val = (document.getElementById('inpLatLon').value||'').trim();
+  const ll = parseLatLon(val);
+  if(!ll){ setStatus("Formato inválido. Usa lat,lon"); return; }
+  setOrigin(ll.lat, ll.lng, ORIGIN.name);
+  map.setView([ORIGIN.lat, ORIGIN.lng], 12);
+  applyFilters();
+};
+
+let picking=false;
+const btnPick = document.getElementById('btnPick');
+function setPicking(on){
+  if(PUBLISHED_MODE) { picking=false; return; }
+  picking = on;
+  btnPick.textContent = picking ? '✅ Click en el mapa… (ESC cancela)' : '📍 Fijar obra por click';
+  btnPick.style.borderColor = picking ? '#16a34a' : '#ddd';
+}
+btnPick.onclick = ()=>{ if(PUBLISHED_MODE) return; setPicking(!picking); };
+map.on('click', (e)=>{
+  if(PUBLISHED_MODE) return;
+  if(!picking) return;
+  setOrigin(e.latlng.lat, e.latlng.lng, ORIGIN.name);
+  setPicking(false);
+  applyFilters();
+  setStatus("Obra fijada por click (solo local).");
+});
+window.addEventListener('keydown', (ev)=>{ if(ev.key==='Escape' && picking) setPicking(false); });
+
+/** ========= ARRANQUE ========= **/
+destinoTextEl.textContent = `${ORIGIN.name}: ${ORIGIN.lat.toFixed(5)}, ${ORIGIN.lng.toFixed(5)}`;
+setPublishedMode(true);
+map.setView([ORIGIN.lat, ORIGIN.lng], 11);
+loadExcelFromRepo();
+</script>
+</body>
+</html>
