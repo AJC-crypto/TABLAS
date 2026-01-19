@@ -379,34 +379,45 @@ async function resolveOriginValue(textValue, latValue, lonValue){
 
 /** ========= LOCALIZACION EN EXCEL (al final de la tabla) ========= **/
 function normCell(v){ return slug((v ?? '').toString()); }
+
 function findLocationBlock(rows){
-  // Busca fila que contenga "localizacion" y (latitud/longitud opcional)
+  const isLoc = v => {
+    const s = normCell(v);
+    return s === 'localizacion' || s === 'ubicacion' || s === 'localizacionobra' || s === 'ubicacionobra';
+  };
+  const isLat = v => normCell(v) === 'latitud';
+  const isLon = v => normCell(v) === 'longitud';
+
   for(let i=0;i<rows.length;i++){
     const r = rows[i] || [];
-    const cells = r.map(normCell);
+    const locPos = r.findIndex(isLoc);
+    if(locPos === -1) continue;
 
-    // Caso A: fila cabecera tipo: LOCALIZACION | LATITUD | LONGITUD
-    const hasLoc = cells.includes('localizacion');
-    const hasLat = cells.includes('latitud');
-    const hasLon = cells.includes('longitud');
+    const latPos = r.findIndex(isLat);
+    const lonPos = r.findIndex(isLon);
 
-    if(hasLoc && (hasLat || hasLon)){
+    // Caso 1: fila cabecera: LOCALIZACION | LATITUD | LONGITUD (en cualquier columna)
+    if(latPos !== -1 || lonPos !== -1){
       const next = rows[i+1] || [];
-      const textValue = next[0] ?? '';
-      const latValue = next[1] ?? '';
-      const lonValue = next[2] ?? '';
-      return { textValue, latValue, lonValue, cutIndex: i }; // cortar datos a partir de aquí
+      return {
+        textValue: next[locPos] ?? '',
+        latValue:  (latPos !== -1 ? (next[latPos] ?? '') : ''),
+        lonValue:  (lonPos !== -1 ? (next[lonPos] ?? '') : ''),
+        cutIndex: i
+      };
     }
 
-    // Caso B: fila directa: LOCALIZACION | <texto> | <lat> | <lon>
-    if((cells[0] === 'localizacion') && r.length >= 2){
-      const textValue = r[1] ?? '';
-      const latValue = r[2] ?? '';
-      const lonValue = r[3] ?? '';
-      return { textValue, latValue, lonValue, cutIndex: i };
-    }
+    // Caso 2: fila directa: LOCALIZACION | <texto> | <lat> | <lon>
+    return {
+      textValue: r[locPos+1] ?? '',
+      latValue:  r[locPos+2] ?? '',
+      lonValue:  r[locPos+3] ?? '',
+      cutIndex: i
+    };
   }
   return null;
+}
+
 }
 
 /** ========= PDF nombre limpio ========= **/
