@@ -562,6 +562,9 @@ async function loadExcelFromRepo(){
   // ORIGEN desde Hoja2
   try{
     const o = await readOriginFromSheet2(wb);
+  if(!o){
+  setStatus(`OK: ${added} punto(s). Excel cargado.\n⚠️ No se detectó ORIGEN en Hoja2 (LOCALIZACION/LATITUD/LONGITUD).`);
+}
    if(!o){
   setStatus(`OK: ${added} punto(s). Excel cargado.\n⚠️ No se detectó ORIGEN en Hoja2 (LOCALIZACION/LATITUD/LONGITUD).`);
 }
@@ -640,6 +643,7 @@ loadExcelFromRepo();
 
 </body>
 </html>
+
 
 
 
