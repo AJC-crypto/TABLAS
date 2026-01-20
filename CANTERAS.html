@@ -302,7 +302,7 @@ function fixCoordNumber(x, isLat){
 }
 
 async function readOriginFromSheet2(wb){
-  // admite "Hoja2", "Hoja 2", "HOJA2 ", "Localizacion", etc.
+  // 1) localizar hoja (tolerante a "Hoja 2", "Hoja2", etc.)
   const pick =
     wb.SheetNames.find(n => slug(n).replace(/\s+/g,'') === 'hoja2') ||
     wb.SheetNames.find(n => slug(n).includes('localiz')) ||
@@ -315,7 +315,7 @@ async function readOriginFromSheet2(wb){
   const rows = XLSX.utils.sheet_to_json(sh, {header:1, defval:'', blankrows:false});
   if(!rows || rows.length < 2) return null;
 
-  // 1) intenta localizar cabecera en cualquier fila
+  // 2) buscar cabecera en cualquier fila
   let headerRow=-1, colLoc=-1, colLat=-1, colLon=-1;
   for(let i=0;i<rows.length;i++){
     const r = rows[i] || [];
@@ -326,31 +326,40 @@ async function readOriginFromSheet2(wb){
     if(colLoc !== -1 && colLat !== -1 && colLon !== -1){ headerRow=i; break; }
   }
 
-  // 2) si NO encuentra cabecera, usa el formato fijo A1..C2
+  // fallback: A1..C2
   if(headerRow === -1){
-    colLoc = 0; colLat = 1; colLon = 2;
-    headerRow = 0; // asume que la cabecera está en la primera fila
+    headerRow = 0; colLoc = 0; colLat = 1; colLon = 2;
   }
 
   const data = rows[headerRow+1] || [];
   const textValue = (data[colLoc] ?? '').toString().trim();
-  const lat = fixCoordNumber((data[colLat] ?? ''), true);
-  const lon = fixCoordNumber((data[colLon] ?? ''), false);
+  const latRaw = (data[colLat] ?? '');
+  const lonRaw = (data[colLon] ?? '');
 
-  // prioridad: lat/lon
+  const lat = fixCoordNumber(latRaw, true);
+  const lon = fixCoordNumber(lonRaw, false);
+
+  // 3) prioridad: lat/lon
   if(Number.isFinite(lat) && Number.isFinite(lon)){
-    return { lat, lng: lon, name: textValue || 'Obra' };
+    return { lat, lng: lon, name: textValue || 'Obra', sheet: pick };
   }
 
-  // si no hay lat/lon, prueba "lat,lon" en texto
-  const ll = parseLatLon(textValue);
-  if(ll) return { lat: ll.lat, lng: ll.lng, name: 'Obra' };
+  // 4) si no hay lat/lon, usa texto (con fallback duro para Martos)
+  const t = slug(textValue);
+  const FALLBACK = {
+    'martos': { lat: 37.7213, lng: -3.9708, name: 'MARTOS' }  // ✅ Martos (Jaén) aprox
+  };
 
-  // si no, geocodifica el texto
+  if(FALLBACK[t]){
+    return { ...FALLBACK[t], sheet: pick };
+  }
+
+  // 5) si no es Martos, intenta geocodificar
   if(textValue){
     const p = await geocode(textValue);
-    if(p) return { lat: p.lat, lng: p.lng, name: textValue };
+    if(p) return { lat: p.lat, lng: p.lng, name: textValue, sheet: pick };
   }
+
   return null;
 }
 
@@ -535,7 +544,6 @@ function addPoint({sheet, group, subgrupo, company, place, coord, pdfName}){
   img.onerror = ()=>{ img.style.display='none'; };
   img.src = url;
 })();
-
 /** ========= CARGA EXCEL ========= **/
 async function loadExcelFromRepo(){
   setStatus("Cargando Excel desde GitHub…");
@@ -559,22 +567,30 @@ async function loadExcelFromRepo(){
     return;
   }
 
-  // ORIGEN desde Hoja2
+  // ✅ Inicializa contadores ANTES de leer origen
+  layers=[]; bounds=[]; filters={};
+  let added = 0;
+
+  // ✅ Leer ORIGEN desde Hoja2 y aplicarlo
   try{
     const o = await readOriginFromSheet2(wb);
-  if(!o){
-  setStatus(`OK: ${added} punto(s). Excel cargado.\n⚠️ No se detectó ORIGEN en Hoja2 (LOCALIZACION/LATITUD/LONGITUD).`);
-}
-   if(!o){
-  setStatus(`OK: ${added} punto(s). Excel cargado.\n⚠️ No se detectó ORIGEN en Hoja2 (LOCALIZACION/LATITUD/LONGITUD).`);
-}
-
     if(o){
       setOrigin(o.lat, o.lng, o.name);
+    } else {
+      console.warn("No se detectó ORIGEN en Hoja2");
     }
   }catch(e){
-    console.warn(e);
+    console.warn("Error leyendo ORIGEN Hoja2:", e);
   }
+
+  // 👇 A PARTIR DE AQUÍ ya metes tu bucle:
+  // for(const rawName of wb.SheetNames){ ... }  (saltando Hoja2)
+  // y vas incrementando added, etc.
+
+  // Al final:
+  // setStatus(`OK: ${added} punto(s)... OBRA: ...`);
+}
+
 
   // Datos: todas las hojas excepto Hoja2
   layers=[]; bounds=[]; filters={};
@@ -643,6 +659,7 @@ loadExcelFromRepo();
 
 </body>
 </html>
+
 
 
 
