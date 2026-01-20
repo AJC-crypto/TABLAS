@@ -23,9 +23,6 @@
   .toolbar button:hover{background:#f3f4f6}
   .small{font-size:11px;color:#555}
 
-  .lbl{position:absolute;background:#fff;border:1px solid rgba(0,0,0,.25);border-radius:6px;padding:2px 6px;font-size:12px;color:#111;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;cursor:pointer}
-  .label-pane{z-index:600}
-
   .legend{
     position:absolute;right:10px;bottom:10px;background:rgba(255,255,255,.96);
     border:1px solid #ddd;border-radius:12px;padding:10px;font-size:12px;min-width:320px;max-width:480px;z-index:1000;
@@ -100,13 +97,12 @@
 
 <div class="toolbar" id="toolbar" style="display:none">
   <button id="btnPick">📍 Fijar obra por click</button>
-  <label>lat,lon: <input id="inpLatLon" type="text" placeholder="37.3891,-5.9845"></label>
+  <label>lat,lon: <input id="inpLatLon" type="text" placeholder="37.7213,-3.9708"></label>
   <button id="btnSetLatLon">Aplicar</button>
   <button id="btnFit">Zoom a todo</button>
   <label>Radio (km): <input id="km" type="number" min="1" step="1" value=""></label>
   <button id="btnApplyKm">Aplicar</button>
   <button id="btnClearKm">Quitar radio</button>
-  <label><input id="toggleLabels" type="checkbox" checked> Etiquetas</label>
   <span class="small">Obra: <b id="destinoText">-</b></span>
 </div>
 
@@ -123,7 +119,7 @@
 <script>
 /** ========= CONFIG ========= **/
 const UNLOCK_CODE = "1107";
-const CACHE_BUST = "v=200";   // sube a v=201 si actualizas excel/pdfs
+const CACHE_BUST = "v=301";   // súbelo (v=302, v=303...) cuando actualices Excel/PDFs
 const PATH_EXCEL = "./data/fuentes.xlsx";
 const PATH_LOGO  = "./asset/LOGO.jpg";
 const PDF_DIR    = "./pdfs/";
@@ -195,7 +191,6 @@ map.on('baselayerchange', (e)=>{
   document.body.classList.toggle('grayscale', !!isGray);
 });
 
-const labelPane = map.createPane('labels'); labelPane.classList.add('label-pane');
 const obraPane = map.createPane('obraPane'); obraPane.style.zIndex = 1200;
 
 /** ========= COLORES ========= **/
@@ -280,19 +275,15 @@ function fixCoordNumber(x, isLat){
   let s = String(x).trim();
   if(!s) return null;
 
-  // decimal coma -> punto
   if(s.includes(',') && !s.includes('.')) s = s.replace(',', '.');
 
-  // si hay 2+ puntos, son separadores de miles: 376.708.835
   const dotCount = (s.match(/\./g) || []).length;
   if(dotCount >= 2) s = s.replace(/\./g, '');
 
-  // limpia caracteres raros
   s = s.replace(/[^\d\-.]/g,'');
   const n = Number(s);
   if(!Number.isFinite(n)) return null;
 
-  // microgrados
   if(Math.abs(n) > 200){
     const m = n / 1e7;
     if(isLat && Math.abs(m) <= 90) return m;
@@ -302,7 +293,6 @@ function fixCoordNumber(x, isLat){
 }
 
 async function readOriginFromSheet2(wb){
-  // 1) localizar hoja (tolerante a "Hoja 2", "Hoja2", etc.)
   const pick =
     wb.SheetNames.find(n => slug(n).replace(/\s+/g,'') === 'hoja2') ||
     wb.SheetNames.find(n => slug(n).includes('localiz')) ||
@@ -315,7 +305,6 @@ async function readOriginFromSheet2(wb){
   const rows = XLSX.utils.sheet_to_json(sh, {header:1, defval:'', blankrows:false});
   if(!rows || rows.length < 2) return null;
 
-  // 2) buscar cabecera en cualquier fila
   let headerRow=-1, colLoc=-1, colLat=-1, colLon=-1;
   for(let i=0;i<rows.length;i++){
     const r = rows[i] || [];
@@ -325,39 +314,28 @@ async function readOriginFromSheet2(wb){
     colLon = norm.findIndex(v => v === 'longitud' || v === 'lon' || v === 'lng');
     if(colLoc !== -1 && colLat !== -1 && colLon !== -1){ headerRow=i; break; }
   }
-
-  // fallback: A1..C2
   if(headerRow === -1){
     headerRow = 0; colLoc = 0; colLat = 1; colLon = 2;
   }
 
   const data = rows[headerRow+1] || [];
   const textValue = (data[colLoc] ?? '').toString().trim();
-  const latRaw = (data[colLat] ?? '');
-  const lonRaw = (data[colLon] ?? '');
+  const lat = fixCoordNumber((data[colLat] ?? ''), true);
+  const lon = fixCoordNumber((data[colLon] ?? ''), false);
 
-  const lat = fixCoordNumber(latRaw, true);
-  const lon = fixCoordNumber(lonRaw, false);
-
-  // 3) prioridad: lat/lon
   if(Number.isFinite(lat) && Number.isFinite(lon)){
-    return { lat, lng: lon, name: textValue || 'Obra', sheet: pick };
+    return { lat, lng: lon, name: textValue || 'Obra' };
   }
 
-  // 4) si no hay lat/lon, usa texto (con fallback duro para Martos)
+  // fallback duro Martos (no depende de internet)
   const t = slug(textValue);
-  const FALLBACK = {
-    'martos': { lat: 37.7213, lng: -3.9708, name: 'MARTOS' }  // ✅ Martos (Jaén) aprox
-  };
-
-  if(FALLBACK[t]){
-    return { ...FALLBACK[t], sheet: pick };
+  if(t === 'martos'){
+    return { lat: 37.7213, lng: -3.9708, name: 'MARTOS' };
   }
 
-  // 5) si no es Martos, intenta geocodificar
   if(textValue){
     const p = await geocode(textValue);
-    if(p) return { lat: p.lat, lng: p.lng, name: textValue, sheet: pick };
+    if(p) return { lat: p.lat, lng: p.lng, name: textValue };
   }
 
   return null;
@@ -387,10 +365,11 @@ async function pdfExists(url){
 }
 
 /** ========= FILTROS ========= **/
-let layers=[]; let bounds=[];
-let filters = {};
-const legendBody = document.getElementById('legendBody');
+let layers = [];   // {marker, sheet, group, subgrupo, lat, lng, title, pdfName, place}
+let bounds = [];   // [[lat,lng],...]
+let filters = {};  // por hoja: groups/subgroups
 
+const legendBody = document.getElementById('legendBody');
 function normalizeSheetName(name){ return name || 'Hoja'; }
 
 function renderLegend(){
@@ -399,9 +378,11 @@ function renderLegend(){
     legendBody.innerHTML = `<div class="hint">No hay datos.</div>`;
     return;
   }
+
   const frag = [];
   sheets.forEach(sheet=>{
     const f = filters[sheet];
+
     frag.push(`
       <div class="sheet">
         <div class="sheet-title">
@@ -411,6 +392,7 @@ function renderLegend(){
             <button class="btn-none" data-sheet="${sheet}">Ninguno</button>
           </div>
         </div>
+
         <div class="subhead">Tipo (Col A)</div>
     `);
 
@@ -487,19 +469,21 @@ function applyFilters(){
     const groupOn = f?.groups?.[Lr.group] ?? true;
     const subOn   = f?.subgroups?.[Lr.subgrupo] ?? true;
     const show = groupOn && subOn;
-    if(show){ if(!map.hasLayer(Lr.marker)) Lr.marker.addTo(map); }
-    else{ if(map.hasLayer(Lr.marker)) map.removeLayer(Lr.marker); }
+
+    if(show){
+      if(!map.hasLayer(Lr.marker)) Lr.marker.addTo(map);
+    } else {
+      if(map.hasLayer(Lr.marker)) map.removeLayer(Lr.marker);
+    }
   });
 }
 
 /** ========= PUNTOS ========= **/
 function addPoint({sheet, group, subgrupo, company, place, coord, pdfName}){
   const pinColor = colorForGroup(sheet, group);
-  const popup = L.popup({autoPan:true, closeButton:true});
   const marker = L.marker([coord.lat, coord.lng], {icon: markerIcon(pinColor)});
-  marker.bindPopup(popup).addTo(map);
 
-  async function popupHtml(){
+  marker.on('click', async ()=>{
     const km = haversineKm(ORIGIN.lat, ORIGIN.lng, coord.lat, coord.lng);
     const kmTxt = (km >= 100) ? `${km.toFixed(0)} km` : `${km.toFixed(1)} km`;
     const url = gmapsDirUrl(coord.lat, coord.lng);
@@ -514,7 +498,7 @@ function addPoint({sheet, group, subgrupo, company, place, coord, pdfName}){
         : `<span style="color:#999">PDF no encontrado: ${pdfClean}</span>`;
     }
 
-    return `
+    marker.bindPopup(`
       <div style="font:14px Arial;max-width:620px">
         <h3 style="margin:0 0 4px 0;font-size:16px">${company} <span style="font-weight:900">Ꝿ</span></h3>
         <div style="font-size:12px;color:#444;margin:4px 0">
@@ -527,12 +511,13 @@ function addPoint({sheet, group, subgrupo, company, place, coord, pdfName}){
         <div style="font-size:12px;color:#111;margin-top:8px">Carta de compromiso:</div>
         ${pdfBlock}
         <div style="font-size:11px;color:#666;margin-top:8px">Coord: ${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}</div>
-      </div>`;
-  }
+      </div>
+    `).openPopup();
+  });
 
-  marker.on('popupopen', async ()=>{ popup.setContent("Cargando…"); popup.setContent(await popupHtml()); });
+  marker.addTo(map);
 
-  layers.push({ marker, popup, lat:coord.lat, lng:coord.lng, title:company, sheet, group, subgrupo });
+  layers.push({ marker, sheet, group, subgrupo, lat:coord.lat, lng:coord.lng, title:company, pdfName, place });
   bounds.push([coord.lat, coord.lng]);
 }
 
@@ -544,6 +529,7 @@ function addPoint({sheet, group, subgrupo, company, place, coord, pdfName}){
   img.onerror = ()=>{ img.style.display='none'; };
   img.src = url;
 })();
+
 /** ========= CARGA EXCEL ========= **/
 async function loadExcelFromRepo(){
   setStatus("Cargando Excel desde GitHub…");
@@ -567,39 +553,27 @@ async function loadExcelFromRepo(){
     return;
   }
 
-  // ✅ Inicializa contadores ANTES de leer origen
-  layers=[]; bounds=[]; filters={};
+  // Reset
+  layers = []; bounds = []; filters = {};
   let added = 0;
 
-  // ✅ Leer ORIGEN desde Hoja2 y aplicarlo
+  // ORIGEN desde Hoja2
   try{
     const o = await readOriginFromSheet2(wb);
     if(o){
       setOrigin(o.lat, o.lng, o.name);
-    } else {
-      console.warn("No se detectó ORIGEN en Hoja2");
     }
   }catch(e){
     console.warn("Error leyendo ORIGEN Hoja2:", e);
   }
 
-  // 👇 A PARTIR DE AQUÍ ya metes tu bucle:
-  // for(const rawName of wb.SheetNames){ ... }  (saltando Hoja2)
-  // y vas incrementando added, etc.
-
-  // Al final:
-  // setStatus(`OK: ${added} punto(s)... OBRA: ...`);
-}
-
-
-  // Datos: todas las hojas excepto Hoja2
-  layers=[]; bounds=[]; filters={};
-  let added = 0;
-
+  // Recorrer hojas de datos (todas menos Hoja2)
   for(const rawName of wb.SheetNames){
-    if(rawName.toLowerCase() === 'hoja2') continue;
+    if(slug(rawName).replace(/\s+/g,'') === 'hoja2') continue;
 
-    const sheet = wb.Sheets[rawName]; if(!sheet) continue;
+    const sheet = wb.Sheets[rawName];
+    if(!sheet) continue;
+
     const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', blankrows:false});
     if(!rows || !rows.length) continue;
 
@@ -611,6 +585,7 @@ async function loadExcelFromRepo(){
     const dataRows = looksHeader ? rows.slice(1) : rows;
 
     for(const r of dataRows){
+      // Hoja1: A=Tipo, B=Subgrupo, C=Empresa, D=Posición, E=PDF
       const tipo     = (r[0] ?? '').toString().trim();
       const subgrupo = ((r[1] ?? '').toString().trim()) || '(Sin subgrupo)';
       const company  = (r[2] ?? '').toString().trim();
@@ -639,18 +614,46 @@ async function loadExcelFromRepo(){
   renderLegend();
   applyFilters();
 
-  // ✅ Importante: meter la obra en el zoom general
-  const allBounds = [...bounds];
-  allBounds.push([ORIGIN.lat, ORIGIN.lng]);
-
+  // ✅ Zoom incluyendo OBRA + puntos
+  const allBounds = [...bounds, [ORIGIN.lat, ORIGIN.lng]];
   if(allBounds.length){
     map.fitBounds(allBounds, {padding:[20,20]});
   } else {
     map.setView([ORIGIN.lat, ORIGIN.lng], 11);
   }
 
-  setStatus(`OK: ${added} punto(s).\nOBRA: ${ORIGIN.name}  (${ORIGIN.lat.toFixed(6)}, ${ORIGIN.lng.toFixed(6)})`);
+  setStatus(`OK: ${added} punto(s).\nOBRA: ${ORIGIN.name} (${ORIGIN.lat.toFixed(6)}, ${ORIGIN.lng.toFixed(6)})`);
 }
+
+/** ========= EDICIÓN (solo si desbloqueas) ========= **/
+document.getElementById('btnSetLatLon').onclick = ()=>{
+  if(PUBLISHED_MODE) return;
+  const val = (document.getElementById('inpLatLon').value||'').trim();
+  const ll = parseLatLon(val);
+  if(!ll){ setStatus("Formato inválido. Usa lat,lon"); return; }
+  setOrigin(ll.lat, ll.lng, ORIGIN.name);
+  map.setView([ORIGIN.lat, ORIGIN.lng], 12);
+};
+
+document.getElementById('btnFit').onclick = ()=>{
+  if(PUBLISHED_MODE) return;
+  const allBounds = [...bounds, [ORIGIN.lat, ORIGIN.lng]];
+  map.fitBounds(allBounds, {padding:[20,20]});
+};
+
+let picking = false;
+document.getElementById('btnPick').onclick = ()=>{
+  if(PUBLISHED_MODE) return;
+  picking = !picking;
+  setStatus(picking ? "Click en el mapa para fijar la OBRA." : "Modo click desactivado.");
+};
+map.on('click', (e)=>{
+  if(PUBLISHED_MODE) return;
+  if(!picking) return;
+  setOrigin(e.latlng.lat, e.latlng.lng, ORIGIN.name);
+  picking = false;
+  setStatus("Obra fijada por click (solo local).");
+});
 
 /** ========= ARRANQUE ========= **/
 destinoTextEl.textContent = `${ORIGIN.name}: ${ORIGIN.lat.toFixed(6)}, ${ORIGIN.lng.toFixed(6)}`;
@@ -659,8 +662,3 @@ loadExcelFromRepo();
 
 </body>
 </html>
-
-
-
-
-
