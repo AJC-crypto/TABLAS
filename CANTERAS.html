@@ -18,14 +18,14 @@
     background:rgba(255,255,255,.95);border:1px solid #ddd;border-radius:10px;
     padding:8px 10px;font-size:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap; z-index:1000;
   }
-  .toolbar input[type='number'], .toolbar input[type='text']{width:160px;padding:4px 6px;border:1px solid #ccc;border-radius:6px}
+  .toolbar input[type='number'], .toolbar input[type='text']{width:190px;padding:4px 6px;border:1px solid #ccc;border-radius:6px}
   .toolbar button{padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer}
   .toolbar button:hover{background:#f3f4f6}
   .small{font-size:11px;color:#555}
 
   .legend{
     position:absolute;right:10px;bottom:10px;background:rgba(255,255,255,.96);
-    border:1px solid #ddd;border-radius:12px;padding:10px;font-size:12px;min-width:320px;max-width:480px;z-index:1000;
+    border:1px solid #ddd;border-radius:12px;padding:10px;font-size:12px;min-width:320px;max-width:520px;z-index:1000;
     max-height:55vh; overflow:auto;
   }
   .legend h4{margin:0 0 8px 0;font-size:13px}
@@ -96,6 +96,7 @@
 <div class="left-note">CADA LOCALIZACION "Ꝿ" INCLUYE LA RUTA A OBRA Y LA CARTA DE COMPROMISO</div>
 
 <div class="toolbar" id="toolbar" style="display:none">
+  <button id="btnAskOrigin">🧭 Escribir obra</button>
   <button id="btnPick">📍 Fijar obra por click</button>
   <label>lat,lon: <input id="inpLatLon" type="text" placeholder="37.7213,-3.9708"></label>
   <button id="btnSetLatLon">Aplicar</button>
@@ -119,10 +120,11 @@
 <script>
 /** ========= CONFIG ========= **/
 const UNLOCK_CODE = "1107";
-const CACHE_BUST = "v=301";   // súbelo (v=302, v=303...) cuando actualices Excel/PDFs
+const CACHE_BUST = "v=400"; // sube v=401, v=402... si cambias HTML/Excel/PDFs
 const PATH_EXCEL = "./data/fuentes.xlsx";
 const PATH_LOGO  = "./asset/LOGO.jpg";
 const PDF_DIR    = "./pdfs/";
+const ORIGIN_STORAGE_KEY = "obraOriginV1";
 
 /** ========= STATUS ========= **/
 const statusBox = document.getElementById('statusBox');
@@ -148,26 +150,21 @@ function haversineKm(lat1, lng1, lat2, lng2){
   const R=6371, toRad=d=>d*Math.PI/180;
   const dLat=toRad(lat2-lat1), dLon=toRad(lng2-lng1);
   const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  return R*2*Math.atan2(Math.sqrt(1-a), Math.sqrt(a)); // equivalente
 }
-
-/** ========= BLOQUEO ========= **/
-let PUBLISHED_MODE = true;
-const toolbarEl = document.getElementById('toolbar');
-const publishedPill = document.getElementById('publishedPill');
-document.getElementById('btnUnlock').addEventListener('click', ()=>{
-  const v = prompt("Código de seguridad (4 dígitos):");
-  if(v === null) return;
-  if(String(v).trim() === UNLOCK_CODE){
-    PUBLISHED_MODE = false;
-    toolbarEl.style.display = "flex";
-    publishedPill.style.display = "none";
-    if(obraMarker && obraMarker.dragging) obraMarker.dragging.enable();
-    setStatus("Modo edición (solo local). No se sube nada a GitHub.");
-  }else{
-    setStatus("Código incorrecto. Sigues en modo publicado.");
-  }
-});
+function saveOrigin(){
+  try{ localStorage.setItem(ORIGIN_STORAGE_KEY, JSON.stringify({lat:ORIGIN.lat,lng:ORIGIN.lng,name:ORIGIN.name})); }catch(_){}
+}
+function loadSavedOrigin(){
+  try{
+    const s = localStorage.getItem(ORIGIN_STORAGE_KEY);
+    if(!s) return null;
+    const o = JSON.parse(s);
+    if(!o) return null;
+    if(!Number.isFinite(o.lat) || !Number.isFinite(o.lng)) return null;
+    return o;
+  }catch(_){ return null; }
+}
 
 /** ========= MAPA ========= **/
 const map = L.map('map',{zoomControl:true}).setView([40.2,-3.7],5.8);
@@ -236,7 +233,9 @@ async function geocode(text){
 
 /** ========= OBRA ========= **/
 const destinoTextEl = document.getElementById('destinoText');
-let ORIGIN = { lat: 37.3891, lng: -5.9845, name: "Obra" };
+
+// Default seguro: Martos (si no se detecta nada)
+let ORIGIN = { lat: 37.7213, lng: -3.9708, name: "MARTOS" };
 
 function createObraDivIcon(){
   const html = `
@@ -276,11 +275,10 @@ function fixCoordNumber(x, isLat){
   if(!s) return null;
 
   if(s.includes(',') && !s.includes('.')) s = s.replace(',', '.');
-
   const dotCount = (s.match(/\./g) || []).length;
   if(dotCount >= 2) s = s.replace(/\./g, '');
-
   s = s.replace(/[^\d\-.]/g,'');
+
   const n = Number(s);
   if(!Number.isFinite(n)) return null;
 
@@ -298,7 +296,6 @@ async function readOriginFromSheet2(wb){
     wb.SheetNames.find(n => slug(n).includes('localiz')) ||
     wb.SheetNames.find(n => slug(n).includes('obra')) ||
     null;
-
   if(!pick) return null;
 
   const sh = wb.Sheets[pick];
@@ -327,9 +324,8 @@ async function readOriginFromSheet2(wb){
     return { lat, lng: lon, name: textValue || 'Obra' };
   }
 
-  // fallback duro Martos (no depende de internet)
-  const t = slug(textValue);
-  if(t === 'martos'){
+  // fallback duro si pones "MARTOS" sin coords
+  if(slug(textValue) === 'martos'){
     return { lat: 37.7213, lng: -3.9708, name: 'MARTOS' };
   }
 
@@ -341,8 +337,33 @@ async function readOriginFromSheet2(wb){
   return null;
 }
 
+/** ========= PUBLICADO/EDICIÓN ========= **/
+let PUBLISHED_MODE = true;
+const toolbarEl = document.getElementById('toolbar');
+const publishedPill = document.getElementById('publishedPill');
+
+function setPublishedMode(on){
+  PUBLISHED_MODE = !!on;
+  toolbarEl.style.display = PUBLISHED_MODE ? "none" : "flex";
+  publishedPill.style.display = PUBLISHED_MODE ? "inline-flex" : "none";
+  if(obraMarker && obraMarker.dragging){
+    if(PUBLISHED_MODE) obraMarker.dragging.disable();
+    else obraMarker.dragging.enable();
+  }
+}
+
+document.getElementById('btnUnlock').addEventListener('click', ()=>{
+  const v = prompt("Código de seguridad (4 dígitos):");
+  if(v === null) return;
+  if(String(v).trim() === UNLOCK_CODE){
+    setPublishedMode(false);
+    setStatus("Modo edición (solo local). Puedes escribir o mover la OBRA. No se sube nada a GitHub.");
+  }else{
+    setStatus("Código incorrecto. Sigues en modo publicado.");
+  }
+});
+
 /** ========= PDF ========= **/
-const pdfExistCache = new Map();
 function cleanPdfName(s){
   if(!s) return "";
   let t = (""+s).trim();
@@ -351,24 +372,11 @@ function cleanPdfName(s){
   t = t.replace(/\\/g,'/').split('/').pop();
   return t;
 }
-async function pdfExists(url){
-  if(pdfExistCache.has(url)) return pdfExistCache.get(url);
-  try{
-    const r = await fetch(url, {method:"HEAD", cache:"no-store"});
-    const ok = r.ok;
-    pdfExistCache.set(url, ok);
-    return ok;
-  }catch(_){
-    pdfExistCache.set(url, false);
-    return false;
-  }
-}
 
-/** ========= FILTROS ========= **/
-let layers = [];   // {marker, sheet, group, subgrupo, lat, lng, title, pdfName, place}
-let bounds = [];   // [[lat,lng],...]
-let filters = {};  // por hoja: groups/subgroups
-
+/** ========= DATOS/FILTROS ========= **/
+let layers = [];
+let bounds = [];
+let filters = {};
 const legendBody = document.getElementById('legendBody');
 function normalizeSheetName(name){ return name || 'Hoja'; }
 
@@ -382,7 +390,6 @@ function renderLegend(){
   const frag = [];
   sheets.forEach(sheet=>{
     const f = filters[sheet];
-
     frag.push(`
       <div class="sheet">
         <div class="sheet-title">
@@ -392,7 +399,6 @@ function renderLegend(){
             <button class="btn-none" data-sheet="${sheet}">Ninguno</button>
           </div>
         </div>
-
         <div class="subhead">Tipo (Col A)</div>
     `);
 
@@ -437,6 +443,7 @@ function renderLegend(){
       applyFilters(); renderLegend();
     });
   });
+
   legendBody.querySelectorAll('.chk-sub').forEach(el=>{
     el.addEventListener('change', ()=>{
       const s=el.dataset.sheet, sg=el.dataset.sub;
@@ -453,6 +460,7 @@ function renderLegend(){
       applyFilters(); renderLegend();
     });
   });
+
   legendBody.querySelectorAll('.btn-none').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const s=btn.dataset.sheet;
@@ -490,13 +498,9 @@ function addPoint({sheet, group, subgrupo, company, place, coord, pdfName}){
 
     const pdfClean = cleanPdfName(pdfName);
     const pdfUrl = pdfClean ? `${PDF_DIR}${encodeURIComponent(pdfClean)}?${CACHE_BUST}` : "";
-    let pdfBlock = `<span style="color:#999">Sin PDF asociado</span>`;
-    if(pdfUrl){
-      const ok = await pdfExists(pdfUrl);
-      pdfBlock = ok
-        ? `<ul style="margin:4px 0 0 16px;padding:0"><li style="margin:2px 0"><a href="${pdfUrl}" target="_blank" rel="noopener">📄 ${pdfClean}</a></li></ul>`
-        : `<span style="color:#999">PDF no encontrado: ${pdfClean}</span>`;
-    }
+    const pdfBlock = pdfClean
+      ? `<ul style="margin:4px 0 0 16px;padding:0"><li style="margin:2px 0"><a href="${pdfUrl}" target="_blank" rel="noopener">📄 ${pdfClean}</a></li></ul>`
+      : `<span style="color:#999">Sin PDF asociado</span>`;
 
     marker.bindPopup(`
       <div style="font:14px Arial;max-width:620px">
@@ -553,18 +557,24 @@ async function loadExcelFromRepo(){
     return;
   }
 
-  // Reset
+  // Reset datos
   layers = []; bounds = []; filters = {};
   let added = 0;
 
-  // ORIGEN desde Hoja2
-  try{
-    const o = await readOriginFromSheet2(wb);
-    if(o){
-      setOrigin(o.lat, o.lng, o.name);
+  // ✅ ORIGEN: 1) localStorage  2) Hoja2  3) default
+  const saved = loadSavedOrigin();
+  if(saved){
+    setOrigin(saved.lat, saved.lng, saved.name || "Obra");
+  } else {
+    try{
+      const o = await readOriginFromSheet2(wb);
+      if(o){
+        setOrigin(o.lat, o.lng, o.name);
+        saveOrigin();
+      }
+    }catch(e){
+      console.warn("Error leyendo ORIGEN Hoja2:", e);
     }
-  }catch(e){
-    console.warn("Error leyendo ORIGEN Hoja2:", e);
   }
 
   // Recorrer hojas de datos (todas menos Hoja2)
@@ -614,7 +624,7 @@ async function loadExcelFromRepo(){
   renderLegend();
   applyFilters();
 
-  // ✅ Zoom incluyendo OBRA + puntos
+  // Zoom incluyendo OBRA + puntos
   const allBounds = [...bounds, [ORIGIN.lat, ORIGIN.lng]];
   if(allBounds.length){
     map.fitBounds(allBounds, {padding:[20,20]});
@@ -622,17 +632,46 @@ async function loadExcelFromRepo(){
     map.setView([ORIGIN.lat, ORIGIN.lng], 11);
   }
 
-  setStatus(`OK: ${added} punto(s).\nOBRA: ${ORIGIN.name} (${ORIGIN.lat.toFixed(6)}, ${ORIGIN.lng.toFixed(6)})`);
+  setStatus(`OK: ${added} punto(s).\nOBRA: ${ORIGIN.name} (${ORIGIN.lat.toFixed(6)}, ${ORIGIN.lng.toFixed(6)})\n(ORIGEN: ${loadSavedOrigin() ? "guardado en navegador" : "Hoja2 o default"})`);
 }
 
-/** ========= EDICIÓN (solo si desbloqueas) ========= **/
+/** ========= EDICIÓN: preguntar / mover / click ========= **/
+async function askOriginByPrompt(){
+  if(PUBLISHED_MODE) return;
+  const v = prompt('Introduce la OBRA (texto o "lat,lon"):\nEj: "Martos, Jaén" o "37.7213,-3.9708"');
+  if(!v) return;
+
+  const ll = parseLatLon(v);
+  if(ll){
+    setOrigin(ll.lat, ll.lng, "OBRA");
+    saveOrigin();
+    map.setView([ORIGIN.lat, ORIGIN.lng], 12);
+    setStatus(`OBRA guardada: ${ORIGIN.lat.toFixed(6)}, ${ORIGIN.lng.toFixed(6)}`);
+    return;
+  }
+
+  const p = await geocode(v);
+  if(p){
+    setOrigin(p.lat, p.lng, v);
+    saveOrigin();
+    map.setView([ORIGIN.lat, ORIGIN.lng], 12);
+    setStatus(`OBRA guardada: ${ORIGIN.name} (${ORIGIN.lat.toFixed(6)}, ${ORIGIN.lng.toFixed(6)})`);
+  }else{
+    setStatus("No se pudo localizar. Prueba con lat,lon.");
+  }
+}
+
+document.getElementById('btnAskOrigin').onclick = askOriginByPrompt;
+
 document.getElementById('btnSetLatLon').onclick = ()=>{
   if(PUBLISHED_MODE) return;
   const val = (document.getElementById('inpLatLon').value||'').trim();
   const ll = parseLatLon(val);
   if(!ll){ setStatus("Formato inválido. Usa lat,lon"); return; }
-  setOrigin(ll.lat, ll.lng, ORIGIN.name);
+  setOrigin(ll.lat, ll.lng, ORIGIN.name || "OBRA");
+  saveOrigin();
   map.setView([ORIGIN.lat, ORIGIN.lng], 12);
+  setStatus(`OBRA guardada: ${ORIGIN.lat.toFixed(6)}, ${ORIGIN.lng.toFixed(6)}`);
 };
 
 document.getElementById('btnFit').onclick = ()=>{
@@ -647,15 +686,35 @@ document.getElementById('btnPick').onclick = ()=>{
   picking = !picking;
   setStatus(picking ? "Click en el mapa para fijar la OBRA." : "Modo click desactivado.");
 };
+
 map.on('click', (e)=>{
   if(PUBLISHED_MODE) return;
   if(!picking) return;
-  setOrigin(e.latlng.lat, e.latlng.lng, ORIGIN.name);
+  setOrigin(e.latlng.lat, e.latlng.lng, ORIGIN.name || "OBRA");
+  saveOrigin();
   picking = false;
-  setStatus("Obra fijada por click (solo local).");
+  setStatus("OBRA guardada por click (solo en tu navegador).");
+});
+
+// Drag de obraMarker (solo si desbloqueas)
+obraMarker.on('dragend', ()=>{
+  if(PUBLISHED_MODE) return;
+  const p = obraMarker.getLatLng();
+  setOrigin(p.lat, p.lng, ORIGIN.name || "OBRA");
+  saveOrigin();
+  setStatus("OBRA guardada moviendo la chincheta (solo en tu navegador).");
 });
 
 /** ========= ARRANQUE ========= **/
+setPublishedMode(true);
+
+// si ya hay una obra guardada en este navegador, aplícala antes de cargar excel
+const saved0 = loadSavedOrigin();
+if(saved0){
+  setOrigin(saved0.lat, saved0.lng, saved0.name || "Obra");
+  map.setView([ORIGIN.lat, ORIGIN.lng], 11);
+}
+
 destinoTextEl.textContent = `${ORIGIN.name}: ${ORIGIN.lat.toFixed(6)}, ${ORIGIN.lng.toFixed(6)}`;
 loadExcelFromRepo();
 </script>
