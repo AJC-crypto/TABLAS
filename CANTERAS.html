@@ -302,7 +302,7 @@ function fixCoordNumber(x, isLat){
 }
 
 async function readOriginFromSheet2(wb){
- // admite "Hoja2", "Hoja 2", "HOJA2 ", "Localizacion", etc.
+  // admite "Hoja2", "Hoja 2", "HOJA2 ", "Localizacion", etc.
   const pick =
     wb.SheetNames.find(n => slug(n).replace(/\s+/g,'') === 'hoja2') ||
     wb.SheetNames.find(n => slug(n).includes('localiz')) ||
@@ -347,41 +347,6 @@ async function readOriginFromSheet2(wb){
   if(ll) return { lat: ll.lat, lng: ll.lng, name: 'Obra' };
 
   // si no, geocodifica el texto
-  if(textValue){
-    const p = await geocode(textValue);
-    if(p) return { lat: p.lat, lng: p.lng, name: textValue };
-  }
-  return null;
-}
-  if(!pick) return null;
-
-  const sh = wb.Sheets[pick];
-  const rows = XLSX.utils.sheet_to_json(sh, {header:1, defval:'', blankrows:false});
-  if(!rows || rows.length < 2) return null;
-
-  let headerRow=-1, colLoc=-1, colLat=-1, colLon=-1;
-  for(let i=0;i<rows.length;i++){
-    const r = rows[i] || [];
-    const norm = r.map(v => slug(String(v)));
-    colLoc = norm.findIndex(v => v === 'localizacion' || v === 'ubicacion');
-    colLat = norm.findIndex(v => v === 'latitud' || v === 'lat');
-    colLon = norm.findIndex(v => v === 'longitud' || v === 'lon' || v === 'lng');
-    if(colLoc !== -1 && colLat !== -1 && colLon !== -1){ headerRow=i; break; }
-  }
-  if(headerRow === -1) return null;
-
-  const data = rows[headerRow+1] || [];
-  const textValue = (data[colLoc] ?? '').toString().trim();
-  const lat = fixCoordNumber(data[colLat], true);
-  const lon = fixCoordNumber(data[colLon], false);
-
-  if(Number.isFinite(lat) && Number.isFinite(lon)){
-    return { lat, lng: lon, name: textValue || 'Obra' };
-  }
-
-  const ll = parseLatLon(textValue);
-  if(ll) return { lat: ll.lat, lng: ll.lng, name: 'Obra' };
-
   if(textValue){
     const p = await geocode(textValue);
     if(p) return { lat: p.lat, lng: p.lng, name: textValue };
@@ -675,5 +640,6 @@ loadExcelFromRepo();
 
 </body>
 </html>
+
 
 
