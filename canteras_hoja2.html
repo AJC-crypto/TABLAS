@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fuentes de suministro · Mapa (Hoja2 obligatoria)</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  #map{width:100%;height:100vh}
+  .grayscale .leaflet-tile-pane{filter:grayscale(100%)}
+
+  .status{
+    position:absolute;right:10px;top:10px;background:rgba(255,255,255,.95);
+    border:1px solid #ddd;border-radius:10px;padding:8px 10px;font-size:12px;z-index:1000;max-width:900px;white-space:pre-wrap
+  }
+
+  .legend{
+    position:absolute;right:10px;bottom:10px;background:rgba(255,255,255,.96);
+    border:1px solid #ddd;border-radius:12px;padding:10px;font-size:12px;min-width:320px;max-width:520px;z-index:1000;
+    max-height:55vh; overflow:auto;
+  }
+  .legend h4{margin:0 0 8px 0;font-size:13px}
+  .legend .sheet{border-top:1px solid #eee;padding-top:8px;margin-top:8px}
+  .legend .row{display:flex;align-items:center;gap:8px;margin:4px 0;flex-wrap:wrap}
+  .legend .swatch{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.2)}
+  .legend .sheet-title{display:flex;align-items:center;gap:8px;font-weight:900}
+  .legend .subhead{margin:8px 0 4px 0;font-weight:900;color:#111}
+  .legend .actions{margin-left:auto;display:flex;gap:6px}
+  .legend .actions button{padding:2px 6px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:11px}
+  .legend .actions button:hover{background:#f3f4f6}
+  .legend .hint{color:#666;font-size:11px;margin-top:6px}
+
+  .titlebar{
+    position:absolute; left:10px; bottom:62px; z-index:1100;
+    background:rgba(255,255,255,.95); border:1px solid #ddd; border-radius:12px; padding:8px 12px;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .titlebar img{ max-height:48px; max-width:260px; object-fit:contain; border-radius:6px; border:1px solid #eee; display:none; }
+  .titlebar .title{ font-weight:900; font-size:15px; padding:4px 8px; }
+
+  .left-note{
+    position:absolute; left:10px; bottom:10px; z-index:1100;
+    background:rgba(255,255,255,.95); border:1px solid #ddd; border-radius:10px;
+    padding:8px 12px; font-size:12px; font-weight:900; letter-spacing:.2px;
+    max-width:560px;
+  }
+
+  /* Badge grande para confirmar que estás viendo ESTE archivo */
+  .build-badge{
+    position:absolute; left:10px; top:10px; z-index:2000;
+    background:#111; color:#fff; padding:8px 10px; border-radius:10px;
+    font-weight:900; font-size:12px; opacity:.92;
+  }
+
+  /* Pin obra */
+  .obra-pin { position: relative; width: 38px; height: 38px; transform: translate(-50%, -100%); pointer-events:auto; }
+  .obra-pin .pin { position:absolute; left:0; top:0; width:38px; height:38px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
+</style>
+</head>
+
+<body>
+<div id="map"></div>
+
+<div class="build-badge" id="buildBadge">BUILD: HOJA2-ONLY v1</div>
+
+<div class="titlebar">
+  <img id="logoImg" alt="Logo"/>
+  <div class="title">FUENTES DE SUMINISTRO Y SUBCONTRATACIONES</div>
+</div>
+
+<div class="left-note">CADA LOCALIZACION "Ꝿ" INCLUYE LA RUTA A OBRA Y LA CARTA DE COMPROMISO</div>
+
+<div class="status" id="statusBox">Arrancando…</div>
+
+<div class="legend">
+  <h4>Filtros</h4>
+  <div id="legendBody"><div class="hint">Cargando Excel…</div></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<script>
+/** ========= CONFIG ========= **/
+const CACHE_BUST = "v=1"; // cambia a v=2, v=3...
+const PATH_EXCEL = "./data/fuentes.xlsx";
+const PATH_LOGO  = "./asset/LOGO.jpg";
+const PDF_DIR    = "./pdfs/";
+
+/** ========= STATUS ========= **/
+const statusBox = document.getElementById('statusBox');
+function setStatus(msg){ statusBox.textContent = msg; }
+window.onerror = function(message, source, lineno, colno){
+  setStatus("Error JS: " + message + "\n" + (source||"") + ":" + lineno + ":" + colno);
+};
+window.addEventListener('unhandledrejection', (e)=>{
+  setStatus("Promesa rechazada: " + (e.reason && (e.reason.stack || e.reason.message) || e.reason));
+});
+
+/** ========= UTILS ========= **/
+function slug(s){ return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+function haversineKm(lat1, lng1, lat2, lng2){
+  const R=6371, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lng2-lng1);
+  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  const c=2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R*c;
+}
+
+function fixCoordNumber(x, isLat){
+  if(x === null || x === undefined) return null;
+  let s = String(x).trim();
+  if(!s) return null;
+
+  if(s.includes(',') && !s.includes('.')) s = s.replace(',', '.');
+
+  const dotCount = (s.match(/\./g) || []).length;
+  if(dotCount >= 2) s = s.replace(/\./g, '');
+
+  s = s.replace(/[^\d\-.]/g,'');
+  const n = Number(s);
+  if(!Number.isFinite(n)) return null;
+
+  if(Math.abs(n) > 200){
+    const m = n / 1e7;
+    if(isLat && Math.abs(m) <= 90) return m;
+    if(!isLat && Math.abs(m) <= 180) return m;
+  }
+  return n;
+}
+
+async function geocode(text){
+  await sleep(250);
+  const url=new URL('https://nominatim.openstreetmap.org/search');
+  url.searchParams.set('format','json');
+  url.searchParams.set('limit','1');
+  url.searchParams.set('q', text + ', España');
+  const res=await fetch(url,{headers:{'Accept':'application/json'}});
+  if(!res.ok) return null;
+  const data=await res.json();
+  if(Array.isArray(data)&&data[0]){
+    return {lat:parseFloat(data[0].lat), lng:parseFloat(data[0].lon)};
+  }
+  return null;
+}
+
+/** ========= MAPA (sin chincheta inicial) ========= **/
+const map = L.map('map',{zoomControl:true}).setView([40.2,-3.7],5.8);
+
+const osmGray = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap'});
+const cartoGray = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap &copy; CARTO'});
+const topoColor = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17, attribution:'&copy; OpenTopoMap &copy; OpenStreetMap'});
+const ortoPNOA = L.tileLayer('https://tms-pnoa-ma.idee.es/1.0.0/pnoa-ma/{z}/{x}/{-y}.jpeg',{maxZoom:20, attribution:'&copy; CNIG/IGN (PNOA MA)'});
+
+osmGray.addTo(map);
+document.body.classList.add('grayscale');
+L.control.layers({
+  'OSM (gris)': osmGray,
+  'Carto (gris)': cartoGray,
+  'Topográfico (color)': topoColor,
+  'Ortofoto (PNOA MA)': ortoPNOA
+}, null, { position:'topleft', collapsed:true }).addTo(map);
+
+map.on('baselayerchange', (e)=>{
+  const isGray = (e.layer === osmGray) || (e.layer === cartoGray);
+  document.body.classList.toggle('grayscale', !!isGray);
+});
+
+const obraPane = map.createPane('obraPane'); obraPane.style.zIndex = 1200;
+
+/** ========= LOGO ========= **/
+(function loadLogo(){
+  const img = document.getElementById('logoImg');
+  const url = `${PATH_LOGO}?${CACHE_BUST}`;
+  img.onload = ()=>{ img.style.display='block'; };
+  img.onerror = ()=>{ img.style.display='none'; };
+  img.src = url;
+})();
+
+/** ========= ORIGIN (NO HAY DEFAULT, NO HAY MARKER AL INICIO) ========= **/
+let ORIGIN = null;
+let obraMarker = null;
+
+function createObraDivIcon(){
+  const html = `
+    <div class="obra-pin" aria-label="Obra">
+      <svg class="pin" viewBox="0 0 24 24" width="38" height="38" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#d32f2f" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+      </svg>
+    </div>`;
+  return L.divIcon({ className:'', html, iconSize:[0,0], iconAnchor:[0,0], popupAnchor:[0,-28] });
+}
+
+function setOrigin(lat,lng,name){
+  ORIGIN = {lat, lng, name: name || "Obra"};
+  if(!obraMarker){
+    obraMarker = L.marker([lat,lng], {
+      icon: createObraDivIcon(),
+      draggable:false,
+      pane:'obraPane',
+      zIndexOffset: 100000
+    }).addTo(map);
+  }else{
+    obraMarker.setLatLng([lat,lng]);
+  }
+  obraMarker.bindPopup(`<b>${ORIGIN.name}</b><br>${ORIGIN.lat.toFixed(6)}, ${ORIGIN.lng.toFixed(6)}`);
+}
+
+function gmapsDirUrl(destLat, destLng){
+  return `https://www.google.com/maps/dir/?api=1&origin=${ORIGIN.lat},${ORIGIN.lng}&destination=${destLat},${destLng}&travelmode=driving`;
+}
+
+/** ========= LEE OBRA DESDE EXCEL (Hoja2 obligatoria) ========= **/
+async function readOriginStrictFromExcel(wb){
+  const pick = wb.SheetNames.find(n => slug(n).replace(/\s+/g,'') === 'hoja2') || null;
+  if(!pick) throw new Error('No existe "Hoja2". Debe llamarse EXACTAMENTE "Hoja2".');
+
+  const sh = wb.Sheets[pick];
+  const rows = XLSX.utils.sheet_to_json(sh, {header:1, defval:'', blankrows:false});
+  if(!rows || rows.length < 2) throw new Error('Hoja2 vacía. Debe tener cabecera (fila 1) y datos (fila 2).');
+
+  // Busca cabecera
+  let headerRow=-1, colLoc=-1, colLat=-1, colLon=-1;
+  for(let i=0;i<rows.length;i++){
+    const r = rows[i] || [];
+    const norm = r.map(v => slug(String(v)));
+    colLoc = norm.findIndex(v => v === 'localizacion' || v === 'ubicacion');
+    colLat = norm.findIndex(v => v === 'latitud' || v === 'lat');
+    colLon = norm.findIndex(v => v === 'longitud' || v === 'lon' || v === 'lng');
+    if(colLoc !== -1 && colLat !== -1 && colLon !== -1){ headerRow=i; break; }
+  }
+  if(headerRow === -1) throw new Error('Hoja2: cabecera no válida. Usa LOCALIZACION / LATITUD / LONGITUD.');
+
+  const data = rows[headerRow+1] || [];
+  const textValue = (data[colLoc] ?? '').toString().trim();
+  const latRaw = (data[colLat] ?? '');
+  const lonRaw = (data[colLon] ?? '');
+
+  let lat = fixCoordNumber(latRaw, true);
+  let lon = fixCoordNumber(lonRaw, false);
+
+  if(!(Number.isFinite(lat) && Number.isFinite(lon))){
+    if(!textValue) throw new Error('Hoja2: rellena LOCALIZACION o LATITUD/LONGITUD.');
+
+    // MARTOS sin internet (por si falla Nominatim)
+    if(slug(textValue) === 'martos'){
+      lat = 37.7213; lon = -3.9708;
+    } else {
+      const p = await geocode(textValue);
+      if(!p) throw new Error('Hoja2: no se pudo localizar LOCALIZACION. Pon LATITUD/LONGITUD.');
+      lat = p.lat; lon = p.lng;
+    }
+  }
+
+  return {lat, lon, name: textValue || "Obra", sheet: pick, textValue, latRaw, lonRaw};
+}
+
+/** ========= COLORES GRUPOS ========= **/
+const groupColorMap = {};
+function hashCode(str){ let h=0; for(let i=0;i<str.length;i++){ h=(h<<5)-h+str.charCodeAt(i); h|=0; } return Math.abs(h); }
+function hsvToRgb(h,s,v){ let f=(n,k=(n+h/60)%6)=>v-v*s*Math.max(Math.min(k,4-k,1),0); return [f(5),f(3),f(1)]; }
+function rgbToHex(r,g,b){ const c=x=>('0'+Math.round(x*255).toString(16)).slice(-2); return `#${c(r)}${c(g)}${c(b)}`; }
+function colorForGroup(sheet, group){
+  const key = sheet+'::'+group;
+  if(groupColorMap[key]) return groupColorMap[key];
+  const baseHue = (hashCode(key)%360);
+  const [r,g,b] = hsvToRgb(baseHue, 0.70, 0.95);
+  const hex = rgbToHex(r,g,b);
+  groupColorMap[key] = hex; return hex;
+}
+function markerIcon(color='#333'){
+  const svg=encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='"+color+"' d='M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z'/></svg>");
+  return L.icon({iconUrl:'data:image/svg+xml;charset=UTF-8,'+svg,iconSize:[28,28],iconAnchor:[14,28],popupAnchor:[0,-28]});
+}
+
+/** ========= FILTROS ========= **/
+let layers = [];
+let bounds = [];
+let filters = {};
+const legendBody = document.getElementById('legendBody');
+function normalizeSheetName(name){ return name || 'Hoja'; }
+
+function renderLegend(){
+  const sheets = Object.keys(filters);
+  if(!sheets.length){
+    legendBody.innerHTML = `<div class="hint">No hay datos.</div>`;
+    return;
+  }
+
+  const frag = [];
+  sheets.forEach(sheet=>{
+    const f = filters[sheet];
+    frag.push(`
+      <div class="sheet">
+        <div class="sheet-title">
+          <span>${sheet}</span>
+          <div class="actions">
+            <button class="btn-all" data-sheet="${sheet}">Todos</button>
+            <button class="btn-none" data-sheet="${sheet}">Ninguno</button>
+          </div>
+        </div>
+        <div class="subhead">Tipo (Col A)</div>
+    `);
+
+    Object.keys(f.groups).sort().forEach(g=>{
+      const on = f.groups[g];
+      const gcol = colorForGroup(sheet,g);
+      frag.push(`
+        <div class="row">
+          <span class="swatch" style="background:${gcol}"></span>
+          <label style="flex:1 1 auto">
+            <input type="checkbox" class="chk-group" data-sheet="${sheet}" data-group="${g}" ${on?'checked':''}>
+            ${g}
+          </label>
+        </div>
+      `);
+    });
+
+    frag.push(`<div class="subhead">Subgrupo (Col B)</div>`);
+
+    Object.keys(f.subgroups).sort().forEach(sg=>{
+      const on = f.subgroups[sg];
+      frag.push(`
+        <div class="row">
+          <span class="swatch" style="background:#fff"></span>
+          <label style="flex:1 1 auto">
+            <input type="checkbox" class="chk-sub" data-sheet="${sheet}" data-sub="${sg}" ${on?'checked':''}>
+            ${sg}
+          </label>
+        </div>
+      `);
+    });
+
+    frag.push(`</div>`);
+  });
+
+  legendBody.innerHTML = frag.join('');
+
+  legendBody.querySelectorAll('.chk-group').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      const s=el.dataset.sheet, g=el.dataset.group;
+      filters[s].groups[g] = el.checked;
+      applyFilters(); renderLegend();
+    });
+  });
+
+  legendBody.querySelectorAll('.chk-sub').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      const s=el.dataset.sheet, sg=el.dataset.sub;
+      filters[s].subgroups[sg] = el.checked;
+      applyFilters(); renderLegend();
+    });
+  });
+
+  legendBody.querySelectorAll('.btn-all').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const s=btn.dataset.sheet;
+      Object.keys(filters[s].groups).forEach(k=>filters[s].groups[k]=true);
+      Object.keys(filters[s].subgroups).forEach(k=>filters[s].subgroups[k]=true);
+      applyFilters(); renderLegend();
+    });
+  });
+
+  legendBody.querySelectorAll('.btn-none').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const s=btn.dataset.sheet;
+      Object.keys(filters[s].groups).forEach(k=>filters[s].groups[k]=false);
+      Object.keys(filters[s].subgroups).forEach(k=>filters[s].subgroups[k]=false);
+      applyFilters(); renderLegend();
+    });
+  });
+}
+
+function applyFilters(){
+  layers.forEach(Lr=>{
+    const f = filters[Lr.sheet];
+    const groupOn = f?.groups?.[Lr.group] ?? true;
+    const subOn   = f?.subgroups?.[Lr.subgrupo] ?? true;
+    const show = groupOn && subOn;
+
+    if(show){
+      if(!map.hasLayer(Lr.marker)) Lr.marker.addTo(map);
+    } else {
+      if(map.hasLayer(Lr.marker)) map.removeLayer(Lr.marker);
+    }
+  });
+}
+
+/** ========= PUNTOS ========= **/
+function cleanPdfName(s){
+  if(!s) return "";
+  let t = (""+s).trim();
+  t = t.replace(/^📄\s*/,'').trim();
+  if(t && !t.toLowerCase().endsWith(".pdf")) t += ".pdf";
+  t = t.replace(/\\/g,'/').split('/').pop();
+  return t;
+}
+
+function addPoint({sheet, group, subgrupo, company, place, coord, pdfName}){
+  const pinColor = colorForGroup(sheet, group);
+  const marker = L.marker([coord.lat, coord.lng], {icon: markerIcon(pinColor)});
+
+  marker.on('click', ()=>{
+    const km = haversineKm(ORIGIN.lat, ORIGIN.lng, coord.lat, coord.lng);
+    const kmTxt = (km >= 100) ? `${km.toFixed(0)} km` : `${km.toFixed(1)} km`;
+    const url = gmapsDirUrl(coord.lat, coord.lng);
+
+    const pdfClean = cleanPdfName(pdfName);
+    const pdfUrl = pdfClean ? `${PDF_DIR}${encodeURIComponent(pdfClean)}?${CACHE_BUST}` : "";
+    const pdfBlock = pdfClean
+      ? `<ul style="margin:4px 0 0 16px;padding:0"><li style="margin:2px 0"><a href="${pdfUrl}" target="_blank" rel="noopener">📄 ${pdfClean}</a></li></ul>`
+      : `<span style="color:#999">Sin PDF asociado</span>`;
+
+    marker.bindPopup(`
+      <div style="font:14px Arial;max-width:620px">
+        <h3 style="margin:0 0 4px 0;font-size:16px">${company} <span style="font-weight:900">Ꝿ</span></h3>
+        <div style="font-size:12px;color:#444;margin:4px 0">
+          Tipo (A): <b>${group}</b><br>
+          Subgrupo (B): <b>${subgrupo || '-'}</b>
+        </div>
+        <div style="font-size:12px;color:#666">Posición: ${place}</div>
+        <div style="font-size:12px;color:#111;margin-top:6px">Distancia a obra: <b>${kmTxt}</b></div>
+        <div style="margin-top:6px"><a href="${url}" target="_blank" rel="noopener" style="font-size:12px;">🧭 Ver ruta a obra (Google Maps)</a></div>
+        <div style="font-size:12px;color:#111;margin-top:8px">Carta de compromiso:</div>
+        ${pdfBlock}
+        <div style="font-size:11px;color:#666;margin-top:8px">Coord: ${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}</div>
+      </div>
+    `).openPopup();
+  });
+
+  marker.addTo(map);
+  layers.push({ marker, sheet, group, subgrupo });
+  bounds.push([coord.lat, coord.lng]);
+}
+
+/** ========= CARGA EXCEL ========= **/
+async function loadExcelFromRepo(){
+  setStatus("Cargando Excel desde GitHub…");
+  const excelUrl = `${PATH_EXCEL}?${CACHE_BUST}`;
+
+  let ab;
+  try{
+    const res = await fetch(excelUrl, {cache:"no-store"});
+    if(!res.ok) throw new Error("No se pudo descargar el Excel: " + res.status + " " + res.statusText);
+    ab = await res.arrayBuffer();
+  }catch(err){
+    setStatus("ERROR cargando Excel.\n" + err.message + "\nURL: " + excelUrl);
+    return;
+  }
+
+  let wb;
+  try{
+    wb = XLSX.read(ab, {type:'array'});
+  }catch(err){
+    setStatus("ERROR leyendo el Excel.\n" + (err.message||err));
+    return;
+  }
+
+  // ORIGEN obligatorio
+  let originInfo;
+  try{
+    originInfo = await readOriginStrictFromExcel(wb);
+    setOrigin(originInfo.lat, originInfo.lon, originInfo.name);
+  }catch(err){
+    setStatus("ERROR ORIGEN (Hoja2)\n" + err.message + "\n\nIMPORTANTE: aquí NO debe aparecer ninguna chincheta.");
+    return;
+  }
+
+  // Datos
+  layers=[]; bounds=[]; filters={};
+  let added = 0;
+
+  for(const rawName of wb.SheetNames){
+    if(slug(rawName).replace(/\s+/g,'') === 'hoja2') continue;
+
+    const sheet = wb.Sheets[rawName];
+    if(!sheet) continue;
+
+    const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', blankrows:false});
+    if(!rows || !rows.length) continue;
+
+    const alias = normalizeSheetName(rawName);
+    if(!filters[alias]) filters[alias] = { groups:{}, subgroups:{} };
+
+    const first = (rows[0]||[]).map(v=>String(v).toLowerCase());
+    const looksHeader = first.join(' ').includes('empresa') || first.join(' ').includes('posic') || first.join(' ').includes('pdf');
+    const dataRows = looksHeader ? rows.slice(1) : rows;
+
+    for(const r of dataRows){
+      const tipo     = (r[0] ?? '').toString().trim();
+      const subgrupo = ((r[1] ?? '').toString().trim()) || '(Sin subgrupo)';
+      const company  = (r[2] ?? '').toString().trim();
+      const place    = (r[3] ?? '').toString().trim();
+      const pdfName  = (r[4] ?? '').toString().trim();
+
+      if(!tipo || !company || !place) continue;
+
+      if(!(tipo in filters[alias].groups)) filters[alias].groups[tipo] = true;
+      if(!(subgrupo in filters[alias].subgroups)) filters[alias].subgroups[subgrupo] = true;
+
+      let coord = null;
+      const maybeCoord = place.match(/^\s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*$/);
+      if(maybeCoord){
+        coord = {lat: parseFloat(maybeCoord[1]), lng: parseFloat(maybeCoord[3])};
+      } else {
+        coord = await geocode(place);
+      }
+      if(!coord) continue;
+
+      addPoint({sheet: alias, group: tipo, subgrupo, company, place, coord, pdfName});
+      added++;
+    }
+  }
+
+  renderLegend();
+  applyFilters();
+
+  const allBounds = [...bounds, [ORIGIN.lat, ORIGIN.lng]];
+  map.fitBounds(allBounds, {padding:[20,20]});
+
+  setStatus(
+    `OK: ${added} punto(s)\n` +
+    `OBRA (Hoja2): ${ORIGIN.name} (${ORIGIN.lat.toFixed(6)}, ${ORIGIN.lng.toFixed(6)})\n` +
+    `Leído de: ${originInfo.sheet} | texto="${originInfo.textValue}" latRaw="${originInfo.latRaw}" lonRaw="${originInfo.lonRaw}"`
+  );
+}
+
+/** ========= ARRANQUE ========= **/
+setStatus("BUILD HOJA2-ONLY v1\nCargando Excel…");
+loadExcelFromRepo();
+</script>
+
+</body>
+</html>
