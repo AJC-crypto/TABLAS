@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fuentes de suministro · Mapa</title>
+<title>Fuentes de suministro · Mapa (Hoja2 obligatoria)</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -12,6 +12,11 @@
   html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
   #map{width:100%;height:100vh}
   .grayscale .leaflet-tile-pane{filter:grayscale(100%)}
+
+  .status{
+    position:absolute;right:10px;top:10px;background:rgba(255,255,255,.95);
+    border:1px solid #ddd;border-radius:10px;padding:8px 10px;font-size:12px;z-index:1000;max-width:900px;white-space:pre-wrap
+  }
 
   .legend{
     position:absolute;right:10px;bottom:10px;background:rgba(255,255,255,.96);
@@ -29,20 +34,13 @@
   .legend .actions button:hover{background:#f3f4f6}
   .legend .hint{color:#666;font-size:11px;margin-top:6px}
 
-  .status{
-    position:absolute;right:10px;top:10px;background:rgba(255,255,255,.95);
-    border:1px solid #ddd;border-radius:10px;padding:8px 10px;font-size:12px;z-index:1000;max-width:900px;white-space:pre-wrap
-  }
-
   .titlebar{
-    position:absolute;
-    left:10px; bottom:62px;
-    display:flex; flex-direction:column; align-items:flex-start; gap:6px;
-    z-index:1100;
+    position:absolute; left:10px; bottom:62px; z-index:1100;
     background:rgba(255,255,255,.95); border:1px solid #ddd; border-radius:12px; padding:8px 12px;
+    display:flex; flex-direction:column; gap:6px;
   }
-  .titlebar img{ max-height:48px; max-width:260px; object-fit:contain; border-radius:6px; border:1px solid #eee }
-  .titlebar .title{ min-width:240px; font-weight:900; font-size:15px; padding:4px 8px; }
+  .titlebar img{ max-height:48px; max-width:260px; object-fit:contain; border-radius:6px; border:1px solid #eee; display:none; }
+  .titlebar .title{ font-weight:900; font-size:15px; padding:4px 8px; }
 
   .left-note{
     position:absolute; left:10px; bottom:10px; z-index:1100;
@@ -51,7 +49,14 @@
     max-width:560px;
   }
 
-  /* Pin obra simple */
+  /* Badge grande para confirmar que estás viendo ESTE archivo */
+  .build-badge{
+    position:absolute; left:10px; top:10px; z-index:2000;
+    background:#111; color:#fff; padding:8px 10px; border-radius:10px;
+    font-weight:900; font-size:12px; opacity:.92;
+  }
+
+  /* Pin obra */
   .obra-pin { position: relative; width: 38px; height: 38px; transform: translate(-50%, -100%); pointer-events:auto; }
   .obra-pin .pin { position:absolute; left:0; top:0; width:38px; height:38px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
 </style>
@@ -60,8 +65,10 @@
 <body>
 <div id="map"></div>
 
+<div class="build-badge" id="buildBadge">BUILD: HOJA2-ONLY v1</div>
+
 <div class="titlebar">
-  <img id="logoImg" alt="Logo" style="display:none"/>
+  <img id="logoImg" alt="Logo"/>
   <div class="title">FUENTES DE SUMINISTRO Y SUBCONTRATACIONES</div>
 </div>
 
@@ -79,7 +86,7 @@
 
 <script>
 /** ========= CONFIG ========= **/
-const CACHE_BUST = "v=999";           // cambia este número cuando edites algo
+const CACHE_BUST = "v=1"; // cambia a v=2, v=3...
 const PATH_EXCEL = "./data/fuentes.xlsx";
 const PATH_LOGO  = "./asset/LOGO.jpg";
 const PDF_DIR    = "./pdfs/";
@@ -111,10 +118,8 @@ function fixCoordNumber(x, isLat){
   let s = String(x).trim();
   if(!s) return null;
 
-  // coma decimal -> punto
   if(s.includes(',') && !s.includes('.')) s = s.replace(',', '.');
 
-  // 2+ puntos => miles 376.708.835 -> 376708835
   const dotCount = (s.match(/\./g) || []).length;
   if(dotCount >= 2) s = s.replace(/\./g, '');
 
@@ -122,7 +127,6 @@ function fixCoordNumber(x, isLat){
   const n = Number(s);
   if(!Number.isFinite(n)) return null;
 
-  // microgrados -> grados
   if(Math.abs(n) > 200){
     const m = n / 1e7;
     if(isLat && Math.abs(m) <= 90) return m;
@@ -146,7 +150,7 @@ async function geocode(text){
   return null;
 }
 
-/** ========= MAPA ========= **/
+/** ========= MAPA (sin chincheta inicial) ========= **/
 const map = L.map('map',{zoomControl:true}).setView([40.2,-3.7],5.8);
 
 const osmGray = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap'});
@@ -179,7 +183,7 @@ const obraPane = map.createPane('obraPane'); obraPane.style.zIndex = 1200;
   img.src = url;
 })();
 
-/** ========= ORIGIN (SIN DEFAULT) ========= **/
+/** ========= ORIGIN (NO HAY DEFAULT, NO HAY MARKER AL INICIO) ========= **/
 let ORIGIN = null;
 let obraMarker = null;
 
@@ -212,23 +216,16 @@ function gmapsDirUrl(destLat, destLng){
   return `https://www.google.com/maps/dir/?api=1&origin=${ORIGIN.lat},${ORIGIN.lng}&destination=${destLat},${destLng}&travelmode=driving`;
 }
 
-/** ========= LEE OBRA DESDE EXCEL (HOJA2 OBLIGATORIA) ========= **/
+/** ========= LEE OBRA DESDE EXCEL (Hoja2 obligatoria) ========= **/
 async function readOriginStrictFromExcel(wb){
-  const pick =
-    wb.SheetNames.find(n => slug(n).replace(/\s+/g,'') === 'hoja2') ||
-    null;
-
-  if(!pick){
-    throw new Error('No existe "Hoja2". Debe haber una hoja llamada Hoja2 con LOCALIZACION/LATITUD/LONGITUD.');
-  }
+  const pick = wb.SheetNames.find(n => slug(n).replace(/\s+/g,'') === 'hoja2') || null;
+  if(!pick) throw new Error('No existe "Hoja2". Debe llamarse EXACTAMENTE "Hoja2".');
 
   const sh = wb.Sheets[pick];
   const rows = XLSX.utils.sheet_to_json(sh, {header:1, defval:'', blankrows:false});
-  if(!rows || rows.length < 2){
-    throw new Error('Hoja2 está vacía. Debe tener cabecera en fila 1 y datos en fila 2.');
-  }
+  if(!rows || rows.length < 2) throw new Error('Hoja2 vacía. Debe tener cabecera (fila 1) y datos (fila 2).');
 
-  // Busca cabecera en cualquier fila
+  // Busca cabecera
   let headerRow=-1, colLoc=-1, colLat=-1, colLon=-1;
   for(let i=0;i<rows.length;i++){
     const r = rows[i] || [];
@@ -238,9 +235,7 @@ async function readOriginStrictFromExcel(wb){
     colLon = norm.findIndex(v => v === 'longitud' || v === 'lon' || v === 'lng');
     if(colLoc !== -1 && colLat !== -1 && colLon !== -1){ headerRow=i; break; }
   }
-  if(headerRow === -1){
-    throw new Error('Hoja2 no tiene cabecera LOCALIZACION/LATITUD/LONGITUD.');
-  }
+  if(headerRow === -1) throw new Error('Hoja2: cabecera no válida. Usa LOCALIZACION / LATITUD / LONGITUD.');
 
   const data = rows[headerRow+1] || [];
   const textValue = (data[colLoc] ?? '').toString().trim();
@@ -250,16 +245,15 @@ async function readOriginStrictFromExcel(wb){
   let lat = fixCoordNumber(latRaw, true);
   let lon = fixCoordNumber(lonRaw, false);
 
-  // Si no hay lat/lon, resolver por texto
   if(!(Number.isFinite(lat) && Number.isFinite(lon))){
     if(!textValue) throw new Error('Hoja2: rellena LOCALIZACION o LATITUD/LONGITUD.');
 
-    // MARTOS sin internet (por si Nominatim falla)
+    // MARTOS sin internet (por si falla Nominatim)
     if(slug(textValue) === 'martos'){
       lat = 37.7213; lon = -3.9708;
     } else {
       const p = await geocode(textValue);
-      if(!p) throw new Error('Hoja2: no se pudo geocodificar la LOCALIZACION. Pon LATITUD/LONGITUD.');
+      if(!p) throw new Error('Hoja2: no se pudo localizar LOCALIZACION. Pon LATITUD/LONGITUD.');
       lat = p.lat; lon = p.lng;
     }
   }
@@ -290,7 +284,6 @@ let layers = [];
 let bounds = [];
 let filters = {};
 const legendBody = document.getElementById('legendBody');
-
 function normalizeSheetName(name){ return name || 'Hoja'; }
 
 function renderLegend(){
@@ -356,6 +349,7 @@ function renderLegend(){
       applyFilters(); renderLegend();
     });
   });
+
   legendBody.querySelectorAll('.chk-sub').forEach(el=>{
     el.addEventListener('change', ()=>{
       const s=el.dataset.sheet, sg=el.dataset.sub;
@@ -372,6 +366,7 @@ function renderLegend(){
       applyFilters(); renderLegend();
     });
   });
+
   legendBody.querySelectorAll('.btn-none').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const s=btn.dataset.sheet;
@@ -440,7 +435,7 @@ function addPoint({sheet, group, subgrupo, company, place, coord, pdfName}){
   });
 
   marker.addTo(map);
-  layers.push({ marker, sheet, group, subgrupo, lat:coord.lat, lng:coord.lng, title:company, pdfName, place });
+  layers.push({ marker, sheet, group, subgrupo });
   bounds.push([coord.lat, coord.lng]);
 }
 
@@ -467,17 +462,17 @@ async function loadExcelFromRepo(){
     return;
   }
 
-  // 1) ORIGEN OBLIGATORIO DESDE HOJA2
+  // ORIGEN obligatorio
   let originInfo;
   try{
     originInfo = await readOriginStrictFromExcel(wb);
     setOrigin(originInfo.lat, originInfo.lon, originInfo.name);
   }catch(err){
-    setStatus("ERROR ORIGEN (Hoja2)\n" + err.message);
-    return; // sin origen no seguimos
+    setStatus("ERROR ORIGEN (Hoja2)\n" + err.message + "\n\nIMPORTANTE: aquí NO debe aparecer ninguna chincheta.");
+    return;
   }
 
-  // 2) Datos
+  // Datos
   layers=[]; bounds=[]; filters={};
   let added = 0;
 
@@ -498,7 +493,6 @@ async function loadExcelFromRepo(){
     const dataRows = looksHeader ? rows.slice(1) : rows;
 
     for(const r of dataRows){
-      // Hoja1: A=Tipo, B=Subgrupo, C=Empresa, D=Posición, E=PDF
       const tipo     = (r[0] ?? '').toString().trim();
       const subgrupo = ((r[1] ?? '').toString().trim()) || '(Sin subgrupo)';
       const company  = (r[2] ?? '').toString().trim();
@@ -527,7 +521,6 @@ async function loadExcelFromRepo(){
   renderLegend();
   applyFilters();
 
-  // Zoom OBRA + puntos
   const allBounds = [...bounds, [ORIGIN.lat, ORIGIN.lng]];
   map.fitBounds(allBounds, {padding:[20,20]});
 
@@ -539,6 +532,7 @@ async function loadExcelFromRepo(){
 }
 
 /** ========= ARRANQUE ========= **/
+setStatus("BUILD HOJA2-ONLY v1\nCargando Excel…");
 loadExcelFromRepo();
 </script>
 
