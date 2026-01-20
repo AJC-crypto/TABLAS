@@ -3,1208 +3,870 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mapa · Excel (Coordenadas) + KML GroundOverlay + Logo + Título + Deduplicación</title>
+<title>Fuentes de suministro · Rutas a obra (Hoja2 obligatoria)</title>
 
-<!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
   *{box-sizing:border-box}
   html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
   #map{width:100%;height:100vh}
-
-  /* ✅ Gris SOLO cuando body tiene la clase .grayscale */
   .grayscale .leaflet-tile-pane{filter:grayscale(100%)}
 
-  .toolbar{
-    position:absolute;left:50%;transform:translateX(-50%);top:8px;
-    background:rgba(255,255,255,.95);border:1px solid #ddd;border-radius:10px;
-    padding:8px 10px;font-size:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap; z-index:1000;
+  .status{
+    position:absolute;right:10px;top:10px;background:rgba(255,255,255,.95);
+    border:1px solid #ddd;border-radius:10px;padding:8px 10px;font-size:12px;z-index:1200;max-width:900px;white-space:pre-wrap
   }
-  .toolbar input[type='number'], .toolbar input[type='text']{width:160px;padding:4px 6px;border:1px solid #ccc;border-radius:6px}
-  .toolbar button,label.btn{padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer}
-  .toolbar button:hover, .toolbar label.btn:hover{background:#f3f4f6}
-  .small{font-size:11px;color:#555}
-  input[type="file"]{display:none}
 
-  .lbl{position:absolute;background:#fff;border:1px solid rgba(0,0,0,.25);border-radius:6px;padding:2px 6px;font-size:12px;color:#111;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;cursor:pointer}
-  .lbl.active{background:#fffbe6;border-color:#f59e0b}
-  .label-pane{z-index:600}
+  .toolbar{
+    position:absolute;left:50%;transform:translateX(-50%);top:10px;
+    background:rgba(255,255,255,.95);border:1px solid #ddd;border-radius:12px;
+    padding:8px 10px;font-size:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap; z-index:1200;
+  }
+  .toolbar input{width:120px;padding:4px 6px;border:1px solid #ccc;border-radius:8px}
+  .toolbar button,label.btn{padding:6px 10px;border:1px solid #ddd;border-radius:10px;background:#fff;cursor:pointer}
+  .toolbar button:hover{background:#f3f4f6}
+  .toolbar .small{font-size:11px;color:#555}
 
-  /* Leyenda SIEMPRE visible + filtrable */
   .legend{
     position:absolute;right:10px;bottom:10px;background:rgba(255,255,255,.96);
-    border:1px solid #ddd;border-radius:12px;padding:10px;font-size:12px;min-width:260px;max-width:420px;z-index:1000;
+    border:1px solid #ddd;border-radius:12px;padding:10px;font-size:12px;min-width:340px;max-width:560px;z-index:1200;
+    max-height:55vh; overflow:auto;
   }
   .legend h4{margin:0 0 8px 0;font-size:13px}
   .legend .sheet{border-top:1px solid #eee;padding-top:8px;margin-top:8px}
   .legend .row{display:flex;align-items:center;gap:8px;margin:4px 0;flex-wrap:wrap}
   .legend .swatch{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.2)}
-  .legend .sheet-title{display:flex;align-items:center;gap:8px;font-weight:600}
+  .legend .sheet-title{display:flex;align-items:center;gap:8px;font-weight:900}
+  .legend .subhead{margin:8px 0 4px 0;font-weight:900;color:#111}
   .legend .actions{margin-left:auto;display:flex;gap:6px}
-  .legend .actions button{padding:2px 6px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:11px}
+  .legend .actions button{padding:2px 6px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:11px}
   .legend .actions button:hover{background:#f3f4f6}
   .legend .hint{color:#666;font-size:11px;margin-top:6px}
+  details summary{cursor:pointer;font-weight:900;margin-top:6px}
+  details{margin-top:6px}
 
-  .status{
-    position:absolute;right:10px;top:10px;background:rgba(255,255,255,.95);
-    border:1px solid #ddd;border-radius:10px;padding:8px 10px;font-size:12px;z-index:1000;max-width:620px;white-space:pre-wrap
-  }
-
-  /* === PIN DE OBRA ANIMADO === */
-  .obra-pin { position: relative; width: 38px; height: 38px; transform: translate(-50%, -100%); pointer-events:auto; }
-  .obra-pin .pin { position:absolute; left:0; top:0; width:38px; height:38px; animation: breathe 1.6s ease-in-out infinite; filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
-  .obra-pin .halo { position:absolute; left:50%; top:50%; width:14px; height:14px; border-radius:50%; transform: translate(-50%, -20%); background: rgba(211,47,47,.25); animation: pulse 1.6s ease-out infinite; }
-  @keyframes breathe { 0% { transform: scale(0.92); opacity:.95 } 50%{ transform: scale(1.20); opacity:1 } 100%{ transform: scale(0.92); opacity:.95 } }
-  @keyframes pulse { 0% { box-shadow:0 0 0 0 rgba(211,47,47,.45); opacity:.9 } 70%{ box-shadow:0 0 0 22px rgba(211,47,47,0); opacity:.15 } 100%{ box-shadow:0 0 0 0 rgba(211,47,47,0); opacity:.9 } }
-
-  /* ====== BARRA DE TÍTULO + LOGO ====== */
   .titlebar{
-    position:absolute;
-    left:10px; right:auto; bottom:10px;
-    display:flex; flex-direction:column; align-items:flex-start; gap:6px;
-    z-index:1100;
+    position:absolute; left:10px; bottom:62px; z-index:1300;
     background:rgba(255,255,255,.95); border:1px solid #ddd; border-radius:12px; padding:8px 12px;
+    display:flex; flex-direction:column; gap:6px;
   }
-  .titlebar img{ max-height:48px; max-width:180px; object-fit:contain; border-radius:6px; border:1px solid #eee }
-  .titlebar .title{
-    min-width:240px; font-weight:700; font-size:16px; outline:none; padding:4px 8px;
-    border-radius:6px; border:1px dashed transparent; text-align:left;
-  }
-  .titlebar .title:focus{ border-color:#9ca3af; background:#fff }
+  .titlebar img{ max-height:48px; max-width:260px; object-fit:contain; border-radius:6px; border:1px solid #eee; display:none; }
+  .titlebar .title{ font-weight:900; font-size:15px; padding:4px 8px; }
 
-  /* Etiqueta fija abajo-izquierda */
-  .corner-tag{
-    position:absolute; left:10px; bottom:10px; z-index:1100;
+  .left-note{
+    position:absolute; left:10px; bottom:10px; z-index:1300;
     background:rgba(255,255,255,.95); border:1px solid #ddd; border-radius:10px;
-    padding:8px 12px; font-size:12px; font-weight:700; letter-spacing:.3px;
+    padding:8px 12px; font-size:12px; font-weight:900; letter-spacing:.2px;
+    max-width:680px;
   }
 
-  /* ✅ PILL “MODO PUBLICADO” + botón desbloqueo */
-  .published-pill{
-    position:absolute; left:10px; top:10px; z-index:1300;
-    background:rgba(255,255,255,.95); border:1px solid #ddd;border-radius:999px;
-    padding:6px 10px; font-size:12px; font-weight:800;
-    display:none;
-    gap:10px;
-    align-items:center;
+  .build-badge{
+    position:absolute; left:10px; top:10px; z-index:1400;
+    background:#111; color:#fff; padding:8px 10px; border-radius:10px;
+    font-weight:900; font-size:12px; opacity:.92;
   }
-  .published-pill .btn-unlock{
-    padding:6px 10px;border:1px solid #ddd;border-radius:999px;background:#fff;cursor:pointer;font-weight:800;font-size:12px;
-  }
-  .published-pill .btn-unlock:hover{background:#f3f4f6}
+
+  /* Pin obra */
+  .obra-pin { position: relative; width: 38px; height: 38px; transform: translate(-50%, -100%); pointer-events:auto; }
+  .obra-pin .pin { position:absolute; left:0; top:0; width:38px; height:38px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
+
+  /* Etiquetas permanentes */
+  .lbl{position:absolute;background:#fff;border:1px solid rgba(0,0,0,.25);border-radius:6px;padding:2px 6px;font-size:12px;color:#111;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;cursor:pointer}
+  .label-pane{z-index:650}
 </style>
 </head>
 
 <body>
 <div id="map"></div>
 
-<div class="published-pill" id="publishedPill">
-  <span>📌 MODO PUBLICADO</span>
-  <button class="btn-unlock" id="btnUnlock">🔓 Editar</button>
+<div class="build-badge" id="buildBadge">BUILD: FUENTES+RUTAS v2 (Hoja2 obligatoria)</div>
+
+<div class="titlebar">
+  <img id="logoImg" alt="Logo"/>
+  <div class="title">FUENTES DE SUMINISTRO Y SUBCONTRATACIONES</div>
 </div>
 
-<div class="titlebar" id="titlebar">
-  <img id="logoImg" alt="Logo" style="display:none"/>
-  <div id="mapTitle" class="title" contenteditable="true" spellcheck="false" title="Escribe aquí el título del plano">Título del plano</div>
-</div>
+<div class="left-note">CADA PUNTO “Ꝿ” INCLUYE RUTA A OBRA + (si existe) CARTA/PDF ASOCIADO</div>
 
-<div class="toolbar" id="toolbar">
-  <button id="btnPick">📍 Fijar obra por click</button>
-  <label>lat,lon: <input id="inpLatLon" type="text" placeholder="37.3891,-5.9845"></label>
-  <button id="btnSetLatLon">Aplicar</button>
-
-  <label for="fileXLSX" class="btn">📄 Cargar Excel (coordenadas)</label>
-  <input id="fileXLSX" type="file" accept=".xlsx,.xls,.xlsm"/>
-
-  <label for="fileKML" class="btn">🗺️ Cargar KML + imágenes</label>
-  <input id="fileKML" type="file" accept=".kml,.xml,image/*" multiple/>
-  <button id="btnClearKML">🧹 Limpiar KML</button>
-
-  <label for="filePDF" class="btn">📑 Cargar PDFs (cartas)</label>
-  <input id="filePDF" type="file" accept="application/pdf" multiple/>
-
-  <label for="fileLogo" class="btn">🖼️ Logo</label>
-  <input id="fileLogo" type="file" accept="image/jpeg,image/png"/>
-
+<div class="toolbar">
   <button id="btnFit">Zoom a todo</button>
-  <label>Radio (km): <input id="km" type="number" min="1" step="1" value=""></label>
+  <label>Radio (km): <input id="km" type="number" min="1" step="1" placeholder=""></label>
   <button id="btnApplyKm">Aplicar</button>
-  <button id="btnClearKm">Quitar radio</button>
-  <label><input id="toggleLabels" type="checkbox" checked> Etiquetas permanentes</label>
-  <span class="small">Destino: <b id="destinoText">La Pañoleta, Sevilla</b></span>
-
-  <button id="btnPublish">📤 Publicar</button>
+  <button id="btnClearKm">Quitar</button>
+  <label class="small"><input id="toggleLabels" type="checkbox" checked> Etiquetas</label>
+  <span class="small" id="originText">Obra: (cargando…)</span>
 </div>
 
-<div class="status" id="statusBox">Cargando librerías…</div>
+<div class="status" id="statusBox">Arrancando…</div>
 
-<div class="legend" id="legend">
-  <h4>Grupos cargados</h4>
-  <div id="legendBody">
-    <div class="hint">
-      Excel esperado (por filas):
-      <br>• A=Grupo (si viene vacío, se “arrastra” el último grupo)
-      <br>• B=Nombre
-      <br>• C=Lat o “Lat/Lon”  ·  D=Lon (opcional)
-      <br>Admite DMS (º ' ") y decimal.
-      <br><br>KML: selecciona el .kml y también las imágenes (png/jpg) referenciadas por GroundOverlay.
-    </div>
-  </div>
+<div class="legend">
+  <h4>Filtros</h4>
+  <div id="legendBody"><div class="hint">Cargando Excel…</div></div>
 </div>
 
-<!-- ✅ Etiqueta fija abajo-izquierda (NO la de la derecha) -->
-<div class="corner-tag" id="cornerTag">PRÉSTAMOS, VERTEDEROS, CANTERAS Y PLANTAS</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script>
-(function(){
-  function loadScript(src, onload){
-    const s=document.createElement('script');
-    s.src=src; s.crossOrigin='anonymous'; s.onload=onload;
-    s.onerror=()=>console.error('Error cargando', src);
-    document.head.appendChild(s);
-  }
-  loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', ()=>{});
-  loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js', ()=>{});
-  // ✅ Para Placemarks (opcional). GroundOverlay lo parseamos sin depender de esto.
-  loadScript('https://unpkg.com/togeojson@0.16.0/dist/togeojson.umd.js', ()=>{});
-})();
-</script>
+/** ========= CONFIG ========= **/
+const CACHE_BUST = "v=1";          // sube a v=2, v=3 cuando cambies Excel/PDF
+const PATH_EXCEL = "./data/fuentes_cv.xlsx"; // <-- AJUSTA al nombre en tu repo
+const PATH_LOGO  = "./asset/LOGO.jpg";
+const PDF_DIR    = "./pdfs/";
 
-<script>
+/** ========= STATUS ========= **/
 const statusBox = document.getElementById('statusBox');
+const originText = document.getElementById('originText');
 function setStatus(msg){ statusBox.textContent = msg; }
-window.onerror = function(message, source, lineno, colno, error){
-  setStatus('Error JS: ' + message + '\nLínea: ' + lineno + ':' + colno);
+window.onerror = function(message, source, lineno, colno){
+  setStatus("Error JS: " + message + "\n" + (source||"") + ":" + lineno + ":" + colno);
 };
 window.addEventListener('unhandledrejection', (e)=>{
-  setStatus('Promesa rechazada: ' + (e.reason && (e.reason.stack || e.reason.message) || e.reason));
+  setStatus("Promesa rechazada: " + (e.reason && (e.reason.stack || e.reason.message) || e.reason));
 });
 
-function waitFor(testFn, timeoutMs=8000){
-  return new Promise((res, rej)=>{
-    const t0=Date.now();
-    const it=setInterval(()=>{
-      if(testFn()){ clearInterval(it); res(true); }
-      else if(Date.now()-t0>timeoutMs){ clearInterval(it); rej(new Error('timeout')); }
-    }, 50);
-  });
+/** ========= UTILS ========= **/
+function slug(s){ return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+function haversineKm(lat1, lng1, lat2, lng2){
+  const R=6371, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lng2-lng1);
+  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-(async function boot(){
-  try{ setStatus('Cargando Leaflet…'); await waitFor(()=>!!window.L, 10000); }
-  catch{ setStatus('No se pudo cargar Leaflet. Revisa la red / CDN.'); return; }
+function fixCoordNumber(x, isLat){
+  if(x === null || x === undefined) return null;
+  let s = String(x).trim();
+  if(!s) return null;
 
-  setStatus('Iniciando mapa…');
+  if(s.includes(',') && !s.includes('.')) s = s.replace(',', '.');
 
-  // ===== ✅ MODO PUBLICADO (bloquea UI/edición) =====
-  const UNLOCK_CODE = "1107";
-  let PUBLISHED_MODE = false;
-  const toolbarEl = document.getElementById('toolbar');
-  const publishedPill = document.getElementById('publishedPill');
-  const titleEl = document.getElementById('mapTitle');
-  const btnUnlock = document.getElementById('btnUnlock');
+  const dotCount = (s.match(/\./g) || []).length;
+  if(dotCount >= 2) s = s.replace(/\./g, '');
 
-  function requestUnlock(){
-    const v = prompt('Código de seguridad (4 dígitos):');
-    if(v === null) return;
-    if(String(v).trim() === UNLOCK_CODE){
-      setPublishedMode(false);
-    }else{
-      setStatus('Código incorrecto. Sigue en MODO PUBLICADO.');
-    }
+  s = s.replace(/[^\d\-.]/g,'');
+  const n = Number(s);
+  if(!Number.isFinite(n)) return null;
+
+  // E7
+  if(Math.abs(n) > 200){
+    const m = n / 1e7;
+    if(isLat && Math.abs(m) <= 90) return m;
+    if(!isLat && Math.abs(m) <= 180) return m;
+  }
+  return n;
+}
+
+// decimal + DMS (º ' " + N/S/E/W/O)
+function parseDmsPart(value){
+  if(value === null || value === undefined) return null;
+  let s = String(value).trim();
+  if(!s) return null;
+  s = s.replace(/,/g,'.').replace(/º/g,'°');
+
+  let dir = null;
+  const mdir = s.match(/([NSEWO])\s*$/i);
+  if(mdir){
+    dir = mdir[1].toUpperCase();
+    if(dir === 'O') dir = 'W';
+    s = s.slice(0, mdir.index).trim();
   }
 
-  function setPublishedMode(on){
-    PUBLISHED_MODE = !!on;
-    if(toolbarEl) toolbarEl.style.display = PUBLISHED_MODE ? 'none' : 'flex';
-    if(publishedPill) publishedPill.style.display = PUBLISHED_MODE ? 'inline-flex' : 'none';
-    if(titleEl) titleEl.contentEditable = PUBLISHED_MODE ? 'false' : 'true';
-
-    if(obraMarker && obraMarker.dragging){
-      if(PUBLISHED_MODE) obraMarker.dragging.disable();
-      else obraMarker.dragging.enable();
-    }
-    if(PUBLISHED_MODE) setPicking(false);
-
-    if(PUBLISHED_MODE && circle){
-      try{ map.removeLayer(circle); }catch(_){}
-      circle = null;
-    }
-
-    setStatus(PUBLISHED_MODE
-      ? 'MODO PUBLICADO: solo filtros + mapa base. (🔓 Editar requiere código)'
-      : 'Listo. Carga Excel / KML y PDFs. Logo y título opcionales.'
-    );
-  }
-  if(btnUnlock) btnUnlock.addEventListener('click', requestUnlock);
-
-  // ===== Config básica =====
-  const DESTINO_TEXTO_INICIAL = 'La Pañoleta, Sevilla';
-  const destinoTextEl = document.getElementById('destinoText');
-  destinoTextEl.textContent = DESTINO_TEXTO_INICIAL;
-
-  // ===== ✅ MAPAS BASE (más + ortofoto) =====
-  const map = L.map('map',{zoomControl:true}).setView([40.2,-3.7],5.8);
-
-  // (gris)
-  const osmGray = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    maxZoom: 19, attribution: '&copy; OpenStreetMap'
-  });
-  const cartoGray = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
-    maxZoom:19, attribution:'&copy; OpenStreetMap &copy; CARTO'
-  });
-
-  // (color)
-  const topoColor = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{
-    maxZoom: 17, attribution: '&copy; OpenTopoMap (CC-BY-SA) &copy; OpenStreetMap'
-  });
-
-  // ✅ Ortofoto PNOA MA (TMS con -y)
-  const ortoPNOA = L.tileLayer('https://tms-pnoa-ma.idee.es/1.0.0/pnoa-ma/{z}/{x}/{-y}.jpeg',{
-    maxZoom: 20, attribution:'&copy; CNIG/IGN (PNOA MA)'
-  });
-
-  // inicial
-  osmGray.addTo(map);
-  document.body.classList.add('grayscale'); // porque el inicial es (gris)
-
-  // selector + overlays
-  const baseLayers = {
-    'OSM (gris)': osmGray,
-    'Carto (gris)': cartoGray,
-    'Topográfico (color)': topoColor,
-    'Ortofoto (PNOA MA)': ortoPNOA
-  };
-  const layerControl = L.control.layers(baseLayers, null, { position:'topleft', collapsed:true }).addTo(map);
-
-  // auto gris según base
-  function setGrayscaleByLayer(layer){
-    const isGray = (layer === osmGray) || (layer === cartoGray);
-    document.body.classList.toggle('grayscale', !!isGray);
-  }
-  map.on('baselayerchange', (e)=> setGrayscaleByLayer(e.layer));
-  setGrayscaleByLayer(osmGray);
-
-  // fallback si OSM da error y está activa
-  osmGray.on('tileerror', ()=>{
-    if(map.hasLayer(osmGray)){
-      setStatus('Fallo OSM. Cambiando a Carto…');
-      try{ map.removeLayer(osmGray); }catch(_){}
-      cartoGray.addTo(map);
-      setGrayscaleByLayer(cartoGray);
-    }
-  });
-
-  // panes
-  const labelPane = map.createPane('labels'); labelPane.classList.add('label-pane');
-  const obraPane = map.createPane('obraPane'); obraPane.style.zIndex = 1200;
-
-  // ===== ✅ Overlays KML (vectores + imágenes) =====
-  const kmlVectorsLayer = L.layerGroup().addTo(map);
-  const kmlImagesLayer  = L.layerGroup().addTo(map);
-  layerControl.addOverlay(kmlVectorsLayer, 'KML · Vectores');
-  layerControl.addOverlay(kmlImagesLayer,  'KML · Imágenes (GroundOverlay)');
-
-  // ===== Utilidades =====
-  const CATEGORY_COLORS = {
-    'Canteras':   '#2e7d32',
-    'Plantas':    '#1565c0',
-    'Vertederos': '#ef6c00',
-    'Préstamos':  '#6a1b9a'
-  };
-
-  const groupColorMap = {};
-  function hashCode(str){ let h=0; for(let i=0;i<str.length;i++){ h=(h<<5)-h+str.charCodeAt(i); h|=0; } return Math.abs(h); }
-  function hsvToRgb(h,s,v){ let f=(n,k=(n+h/60)%6)=>v-v*s*Math.max(Math.min(k,4-k,1),0); return [f(5),f(3),f(1)]; }
-  function rgbToHex(r,g,b){ const c=x=>('0'+Math.round(x*255).toString(16)).slice(-2); return `#${c(r)}${c(g)}${c(b)}`; }
-  function colorForGroup(sheet, group){
-    const key = sheet+'::'+group;
-    if(groupColorMap[key]) return groupColorMap[key];
-    const baseHue = (hashCode(key)%360);
-    const [r,g,b] = hsvToRgb(baseHue, 0.70, 0.95);
-    const hex = rgbToHex(r,g,b);
-    groupColorMap[key] = hex; return hex;
-  }
-
-  function markerIcon(color='#333'){
-    const svg=encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='"+color+"' d='M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z'/></svg>");
-    return L.icon({iconUrl:'data:image/svg+xml;charset=UTF-8,'+svg,iconSize:[28,28],iconAnchor:[14,28],popupAnchor:[0,-28]});
-  }
-  function sheetCategoryColor(sheet){ return CATEGORY_COLORS[sheet] || '#333'; }
-  function catColorAlpha(sheet, alpha){
-    const hex = sheetCategoryColor(sheet).replace('#','');
-    const r=parseInt(hex.substring(0,2),16), g=parseInt(hex.substring(2,4),16), b=parseInt(hex.substring(4,6),16);
-    return `rgba(${r},${g},${b},${alpha})`;
-  }
-
-  function createObraDivIcon(){
-    const html = `
-      <div class="obra-pin" aria-label="Localización de la obra">
-        <div class="halo"></div>
-        <svg class="pin" viewBox="0 0 24 24" width="38" height="38" xmlns="http://www.w3.org/2000/svg">
-          <path fill="#d32f2f" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
-        </svg>
-      </div>`;
-    return L.divIcon({ className:'', html, iconSize:[0,0], iconAnchor:[0,0], popupAnchor:[0,-28] });
-  }
-
-  function slug(s){ return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
-  function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
-  function haversineKm(lat1, lng1, lat2, lng2){
-    const R=6371, toRad=d=>d*Math.PI/180;
-    const dLat=toRad(lat2-lat1), dLon=toRad(lng2-lng1);
-    const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-    return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-  }
-
-  // ============================
-  // ✅ Parseo coordenadas: decimal y DMS
-  // ============================
-  function parseDmsPart(value){
-    if(value === null || value === undefined) return null;
-    let s = String(value).trim();
-    if(!s) return null;
-
-    s = s.replace(/,/g,'.').replace(/º/g,'°');
-
-    // dirección al final (N,S,E,W,O)
-    let dir = null;
-    const mdir = s.match(/([NSEWO])\s*$/i);
-    if(mdir){
-      dir = mdir[1].toUpperCase();
-      if(dir === 'O') dir = 'W';
-      s = s.slice(0, mdir.index).trim();
-    }
-
-    // decimal simple
-    if(/^-?\d+(?:\.\d+)?$/.test(s)){
-      const v = parseFloat(s);
-      if(!Number.isFinite(v)) return null;
-      if(dir){
-        const sign = (dir==='S' || dir==='W') ? -1 : 1;
-        return Math.abs(v) * sign;
-      }
-      return v;
-    }
-
-    // extrae números (grados, min, seg)
-    const nums = s.match(/-?\d+(?:\.\d+)?/g);
-    if(!nums || !nums.length) return null;
-
-    const deg = parseFloat(nums[0]);
-    const min = nums.length>1 ? parseFloat(nums[1]) : 0;
-    const sec = nums.length>2 ? parseFloat(nums[2]) : 0;
-
-    if(!Number.isFinite(deg) || !Number.isFinite(min) || !Number.isFinite(sec)) return null;
-
-    let val = Math.abs(deg) + (min/60) + (sec/3600);
-
-    let sign = (deg < 0) ? -1 : 1;
+  if(/^-?\d+(?:\.\d+)?$/.test(s)){
+    const v = parseFloat(s);
+    if(!Number.isFinite(v)) return null;
     if(dir){
-      sign = (dir==='S' || dir==='W') ? -1 : 1;
+      const sign = (dir==='S' || dir==='W') ? -1 : 1;
+      return Math.abs(v) * sign;
     }
-    return val * sign;
+    return v;
   }
 
-  function parseLatLonPairFromString(str){
-    if(str === null || str === undefined) return null;
-    const t = String(str).trim();
-    if(!t) return null;
+  const nums = s.match(/-?\d+(?:\.\d+)?/g);
+  if(!nums || !nums.length) return null;
 
-    // "lat,lon"
-    const m = t.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
-    if(m){
-      const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
-      if(Number.isFinite(lat) && Number.isFinite(lng)) return {lat, lng};
-    }
+  const deg = parseFloat(nums[0]);
+  const min = nums.length>1 ? parseFloat(nums[1]) : 0;
+  const sec = nums.length>2 ? parseFloat(nums[2]) : 0;
+  if(!Number.isFinite(deg) || !Number.isFinite(min) || !Number.isFinite(sec)) return null;
 
-    // "lat / lon" o "lat ; lon"
-    const parts = t.split(/[\/;]/).map(x=>x.trim()).filter(Boolean);
-    if(parts.length>=2){
-      const lat = parseDmsPart(parts[0]);
-      const lng = parseDmsPart(parts[1]);
-      if(Number.isFinite(lat) && Number.isFinite(lng)) return {lat, lng};
-    }
+  let val = Math.abs(deg) + (min/60) + (sec/3600);
+  let sign = (deg < 0) ? -1 : 1;
+  if(dir) sign = (dir==='S' || dir==='W') ? -1 : 1;
+  return val * sign;
+}
 
-    // dos DMS en el mismo string
-    const dmss = t.match(/\d+\s*[°º]\s*\d+\s*'\s*\d+(?:\.\d+)?\s*["]?\s*[NSEWO]/ig);
-    if(dmss && dmss.length>=2){
-      const lat = parseDmsPart(dmss[0]);
-      const lng = parseDmsPart(dmss[1]);
-      if(Number.isFinite(lat) && Number.isFinite(lng)) return {lat, lng};
-    }
+function parseLatLonPairFromString(str){
+  if(str === null || str === undefined) return null;
+  const t = String(str).trim();
+  if(!t) return null;
 
-    return null;
+  // "lat,lon" decimal
+  const m = t.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+  if(m){
+    const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+    if(Number.isFinite(lat) && Number.isFinite(lng)) return {lat, lng};
   }
 
-  function parseCoordCells(cLatOrPair, cLon){
-    const pair = parseLatLonPairFromString(cLatOrPair);
-    if(pair && Math.abs(pair.lat)<=90 && Math.abs(pair.lng)<=180) return pair;
-
-    const lat = parseDmsPart(cLatOrPair);
-    const lng = parseDmsPart(cLon);
-    if(Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat)<=90 && Math.abs(lng)<=180){
-      return {lat, lng};
-    }
-    return null;
+  // "lat / lon" o "lat ; lon"
+  const parts = t.split(/[\/;]/).map(x=>x.trim()).filter(Boolean);
+  if(parts.length>=2){
+    const lat = parseDmsPart(parts[0]);
+    const lng = parseDmsPart(parts[1]);
+    if(Number.isFinite(lat) && Number.isFinite(lng)) return {lat, lng};
   }
 
-  // === Obra (ORIGIN) ===
-  const destinoText = document.getElementById('destinoText');
-  let ORIGIN = { lat: 37.3891, lng: -5.9845, name: destinoText ? destinoText.textContent : 'Obra' };
-  let obraMarker = null;
-  let circle = null;
-
-  function refreshCircle(){
-    if(PUBLISHED_MODE) return;
-    const v=parseFloat(document.getElementById('km').value);
-    if(circle){ map.removeLayer(circle); circle=null; }
-    if(!isNaN(v) && v>0){
-      circle = L.circle([ORIGIN.lat,ORIGIN.lng], {radius: v*1000, color:'#444', weight:1, fillOpacity:0.05}).addTo(map);
-    }
+  // dos DMS seguidos con N/S/E/W/O
+  const dmss = t.match(/\d+\s*[°º]\s*\d+\s*'\s*\d+(?:\.\d+)?\s*["]?\s*[NSEWO]/ig);
+  if(dmss && dmss.length>=2){
+    const lat = parseDmsPart(dmss[0]);
+    const lng = parseDmsPart(dmss[1]);
+    if(Number.isFinite(lat) && Number.isFinite(lng)) return {lat, lng};
   }
 
-  function setOrigin(lat, lng, name=null){
-    if(PUBLISHED_MODE) return;
-    ORIGIN.lat = lat; ORIGIN.lng = lng; if(name) ORIGIN.name = name;
-    destinoText.textContent = name ? name : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    if(!obraMarker){
-      obraMarker = L.marker([lat,lng], { icon: createObraDivIcon(), draggable:true, pane:'obraPane', zIndexOffset: 100000 })
-        .bindPopup(`<b>Obra</b><br>${destinoText.textContent}`)
-        .addTo(map);
-      obraMarker.on('add', ()=>{ try{ obraMarker.bringToFront(); }catch(_){} });
-      obraMarker.on('dragend', ()=>{
-        if(PUBLISHED_MODE) return;
-        const p = obraMarker.getLatLng();
-        setOrigin(p.lat, p.lng);
-        obraMarker.setPopupContent(`<b>Obra</b><br>${destinoText.textContent}`).openPopup();
-        refreshCircle();
-      });
-    } else {
-      obraMarker.setLatLng([lat,lng]);
-      obraMarker.setPopupContent(`<b>Obra</b><br>${destinoText.textContent}`);
-      try{ obraMarker.bringToFront(); }catch(_){}
-    }
-    refreshCircle();
-    applyFilters();
-    layers.forEach(Lr=>{
-      if (Lr.marker && Lr.marker.isPopupOpen && Lr.marker.isPopupOpen()) {
-        Lr.popup.setContent(Lr.popupHtml());
-      }
-    });
+  return null;
+}
+
+function parseCoordCells(cLatOrPair, cLon){
+  const pair = parseLatLonPairFromString(cLatOrPair);
+  if(pair && Math.abs(pair.lat)<=90 && Math.abs(pair.lng)<=180) return pair;
+
+  // intenta E7/decimal “normal”
+  const latFix = fixCoordNumber(cLatOrPair, true);
+  const lonFix = fixCoordNumber(cLon, false);
+  if(Number.isFinite(latFix) && Number.isFinite(lonFix) && Math.abs(latFix)<=90 && Math.abs(lonFix)<=180){
+    return {lat: latFix, lng: lonFix};
   }
 
-  function gmapsDirUrl(destLat, destLng){
-    return `https://www.google.com/maps/dir/?api=1&origin=${ORIGIN.lat},${ORIGIN.lng}&destination=${destLat},${destLng}&travelmode=driving`;
+  // intenta DMS suelto
+  const lat = parseDmsPart(cLatOrPair);
+  const lng = parseDmsPart(cLon);
+  if(Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat)<=90 && Math.abs(lng)<=180){
+    return {lat, lng};
+  }
+  return null;
+}
+
+/** ========= GEOCODE (fallback) + cache ========= **/
+let geoCache = {};
+const GEO_CACHE_KEY = 'geoCacheFuentesV2';
+try{ geoCache = JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || '{}'); }catch(_){ geoCache = {}; }
+
+async function geocode(text){
+  const key = slug(text);
+  if(geoCache[key]) return geoCache[key];
+  await sleep(250);
+  const url=new URL('https://nominatim.openstreetmap.org/search');
+  url.searchParams.set('format','json');
+  url.searchParams.set('limit','1');
+  url.searchParams.set('q', text + ', España');
+  const res=await fetch(url,{headers:{'Accept':'application/json'}});
+  if(!res.ok) return null;
+  const data=await res.json();
+  if(Array.isArray(data)&&data[0]){
+    const r = {lat:parseFloat(data[0].lat), lng:parseFloat(data[0].lon)};
+    geoCache[key]=r;
+    try{ localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(geoCache)); }catch(_){}
+    return r;
+  }
+  return null;
+}
+
+/** ========= MAPA ========= **/
+const map = L.map('map',{zoomControl:true}).setView([40.2,-3.7],5.8);
+
+const osmGray = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap'});
+const cartoGray = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap &copy; CARTO'});
+const topoColor = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17, attribution:'&copy; OpenTopoMap &copy; OpenStreetMap'});
+const ortoPNOA = L.tileLayer('https://tms-pnoa-ma.idee.es/1.0.0/pnoa-ma/{z}/{x}/{-y}.jpeg',{maxZoom:20, attribution:'&copy; CNIG/IGN (PNOA MA)'});
+
+osmGray.addTo(map);
+document.body.classList.add('grayscale');
+L.control.layers({
+  'OSM (gris)': osmGray,
+  'Carto (gris)': cartoGray,
+  'Topográfico (color)': topoColor,
+  'Ortofoto (PNOA MA)': ortoPNOA
+}, null, { position:'topleft', collapsed:true }).addTo(map);
+
+map.on('baselayerchange', (e)=>{
+  const isGray = (e.layer === osmGray) || (e.layer === cartoGray);
+  document.body.classList.toggle('grayscale', !!isGray);
+});
+
+const labelPane = map.createPane('labels'); labelPane.classList.add('label-pane');
+const obraPane = map.createPane('obraPane'); obraPane.style.zIndex = 1200;
+
+/** ========= LOGO ========= **/
+(function loadLogo(){
+  const img = document.getElementById('logoImg');
+  const url = `${PATH_LOGO}?${CACHE_BUST}`;
+  img.onload = ()=>{ img.style.display='block'; };
+  img.onerror = ()=>{ img.style.display='none'; };
+  img.src = url;
+})();
+
+/** ========= ORIGIN (Hoja2 obligatorio) ========= **/
+let ORIGIN = null;
+let obraMarker = null;
+let circle = null;
+
+function createObraDivIcon(){
+  const html = `
+    <div class="obra-pin" aria-label="Obra">
+      <svg class="pin" viewBox="0 0 24 24" width="38" height="38" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#d32f2f" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+      </svg>
+    </div>`;
+  return L.divIcon({ className:'', html, iconSize:[0,0], iconAnchor:[0,0], popupAnchor:[0,-28] });
+}
+
+function setOrigin(lat,lng,name){
+  ORIGIN = {lat, lng, name: name || "Obra"};
+  originText.textContent = `Obra: ${ORIGIN.name} (${ORIGIN.lat.toFixed(5)}, ${ORIGIN.lng.toFixed(5)})`;
+
+  if(!obraMarker){
+    obraMarker = L.marker([lat,lng], {
+      icon: createObraDivIcon(),
+      draggable:false,
+      pane:'obraPane',
+      zIndexOffset: 100000
+    }).addTo(map);
+  }else{
+    obraMarker.setLatLng([lat,lng]);
+  }
+  obraMarker.bindPopup(`<b>${ORIGIN.name}</b><br>${ORIGIN.lat.toFixed(6)}, ${ORIGIN.lng.toFixed(6)}`);
+
+  refreshCircle();
+}
+
+function gmapsDirUrl(destLat, destLng){
+  return `https://www.google.com/maps/dir/?api=1&origin=${ORIGIN.lat},${ORIGIN.lng}&destination=${destLat},${destLng}&travelmode=driving`;
+}
+
+function refreshCircle(){
+  const v = parseFloat(document.getElementById('km').value);
+  if(circle){ try{ map.removeLayer(circle); }catch(_){ } circle=null; }
+  if(ORIGIN && !isNaN(v) && v>0){
+    circle = L.circle([ORIGIN.lat,ORIGIN.lng], {radius: v*1000, color:'#444', weight:1, fillOpacity:0.05}).addTo(map);
+  }
+}
+
+/** ========= LEE ORIGEN DESDE Hoja2 ========= **/
+async function readOriginStrictFromExcel(wb){
+  const pick = wb.SheetNames.find(n => slug(n).replace(/\s+/g,'') === 'hoja2') || null;
+  if(!pick) throw new Error('No existe "Hoja2". Debe llamarse EXACTAMENTE "Hoja2".');
+
+  const sh = wb.Sheets[pick];
+  const rows = XLSX.utils.sheet_to_json(sh, {header:1, defval:'', blankrows:false});
+  if(!rows || rows.length < 2) throw new Error('Hoja2 vacía. Debe tener cabecera (fila 1) y datos (fila 2).');
+
+  let headerRow=-1, colLoc=-1, colLat=-1, colLon=-1;
+  for(let i=0;i<rows.length;i++){
+    const r = rows[i] || [];
+    const norm = r.map(v => slug(String(v)));
+    colLoc = norm.findIndex(v => v === 'localizacion' || v === 'ubicacion');
+    colLat = norm.findIndex(v => v === 'latitud' || v === 'lat');
+    colLon = norm.findIndex(v => v === 'longitud' || v === 'lon' || v === 'lng');
+    if(colLoc !== -1 && colLat !== -1 && colLon !== -1){ headerRow=i; break; }
+  }
+  if(headerRow === -1) throw new Error('Hoja2: cabecera no válida. Usa LOCALIZACION / LATITUD / LONGITUD.');
+
+  const data = rows[headerRow+1] || [];
+  const textValue = (data[colLoc] ?? '').toString().trim();
+  const latRaw = (data[colLat] ?? '');
+  const lonRaw = (data[colLon] ?? '');
+
+  let lat = fixCoordNumber(latRaw, true);
+  let lon = fixCoordNumber(lonRaw, false);
+
+  if(!(Number.isFinite(lat) && Number.isFinite(lon))){
+    if(!textValue) throw new Error('Hoja2: rellena LOCALIZACION o LATITUD/LONGITUD.');
+    const p = await geocode(textValue);
+    if(!p) throw new Error('Hoja2: no se pudo localizar LOCALIZACION. Pon LATITUD/LONGITUD.');
+    lat = p.lat; lon = p.lng;
   }
 
-  // ===== PDFs =====
-  let pdfFiles = [];
-  const STOPWORDS = new Set(['sa','sau','sl','slu','sll','sae','sociedad','anonima','anónima','limited','ltd','company','compania','compañia','grupo','gr','obras','servicios','service','ingenieria','ingeniería','construcciones','construccion','industrial','industriales','de','del','la','el','los','las','y','and','the','hijos','hermanos','herm','hijas']);
-  const GENERICOS = new Set(['hormigon','hormigones','ferralla','acero','cemento','prefabricados','agregados','transportes','canteras','movimiento','tierras','maquinaria','suministros','gestores','residuos']);
+  return {lat, lon, name: textValue || "Obra", sheet: pick, textValue, latRaw, lonRaw};
+}
 
-  function normalizeCompanyName(name){
-    let s = slug(name).replace(/[&]/g,' y ');
-    s = s.replace(/\b(s\.?a\.?u?|s\.?a\.?|s\.?l\.?u?|s\.?l\.?|sau|sa|slu|sl)\b/g,' ');
-    s = s.replace(/\b(grupo|obras|servicios|ingenieria|ingeniería|construcciones|construccion)\b/g,' ');
-    return s.replace(/\s+/g,' ').trim();
-  }
-  function tokensFromSlug(str){
-    return new Set(
-      slug(str)
-        .split(/[^a-z0-9áéíóúüñ]+/i)
-        .filter(t => t && t.length>=3 && !STOPWORDS.has(t))
-    );
-  }
+/** ========= COLORES ========= **/
+const groupColorMap = {};
+function hashCode(str){ let h=0; for(let i=0;i<str.length;i++){ h=(h<<5)-h+str.charCodeAt(i); h|=0; } return Math.abs(h); }
+function hsvToRgb(h,s,v){ let f=(n,k=(n+h/60)%6)=>v-v*s*Math.max(Math.min(k,4-k,1),0); return [f(5),f(3),f(1)]; }
+function rgbToHex(r,g,b){ const c=x=>('0'+Math.round(x*255).toString(16)).slice(-2); return `#${c(r)}${c(g)}${c(b)}`; }
+function colorForGroup(sheet, group){
+  const key = sheet+'::'+group;
+  if(groupColorMap[key]) return groupColorMap[key];
+  const baseHue = (hashCode(key)%360);
+  const [r,g,b] = hsvToRgb(baseHue, 0.70, 0.95);
+  const hex = rgbToHex(r,g,b);
+  groupColorMap[key] = hex; return hex;
+}
+function markerIcon(color='#333'){
+  const svg=encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='"+color+"' d='M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z'/></svg>");
+  return L.icon({iconUrl:'data:image/svg+xml;charset=UTF-8,'+svg,iconSize:[28,28],iconAnchor:[14,28],popupAnchor:[0,-28]});
+}
 
-  const COMPANY_PDF_UNIQUE = new Map();
-  function scorePdfForCompany(pdf, cTokens, coreSlug){
-    const inter = Array.from(cTokens).filter(t => pdf.tokens.has(t));
-    let score = inter.length * 2;
-    if(pdf.slug.includes(coreSlug) && coreSlug.length>=5) score += 5;
-    if(inter.some(t=>t.length>=5)) score += 2;
-    if(inter.some(t=>!GENERICOS.has(t))) score += 3;
-    return score;
-  }
-  function selectUniquePdfForCompany(company){
-    const core = normalizeCompanyName(company);
-    if(COMPANY_PDF_UNIQUE.has(core)) return COMPANY_PDF_UNIQUE.get(core);
-    if(!pdfFiles.length) return null;
-    const cTokens = tokensFromSlug(core);
-    const coreSlug = slug(core);
-    let best = null, bestScore = 0;
-    for(const p of pdfFiles){
-      const sc = scorePdfForCompany(p, cTokens, coreSlug);
-      if(sc>bestScore){ best = p; bestScore = sc; }
-    }
-    if(bestScore<2) best = null;
-    COMPANY_PDF_UNIQUE.set(core, best);
-    return best;
-  }
-  function indexPdfs(fileList){
-    if(PUBLISHED_MODE) return;
-    pdfFiles = [];
-    for(const f of fileList){
-      const url = URL.createObjectURL(f);
-      const name = f.name || 'documento.pdf';
-      const s = slug(name);
-      pdfFiles.push({ name, url, slug: s, tokens: tokensFromSlug(s) });
-    }
-    COMPANY_PDF_UNIQUE.clear();
-    layers.forEach(Lr=>{ if(Lr && Lr.company){ selectUniquePdfForCompany(Lr.company); }});
-    layers.forEach(Lr=>{
-      if (Lr.marker && Lr.marker.isPopupOpen && Lr.marker.isPopupOpen()) {
-        Lr.popup.setContent(Lr.popupHtml());
-      }
-    });
+/** ========= DEDUP ========= **/
+const STOPWORDS = new Set(['sa','sau','sl','slu','sll','sociedad','anonima','anónima','grupo','obras','servicios','ingenieria','ingeniería','construcciones','construccion','industrial','industriales','de','del','la','el','los','las','y','and','the']);
+function normalizeCompanyName(name){
+  let s = slug(name).replace(/[&]/g,' y ');
+  s = s.replace(/\b(s\.?a\.?u?|s\.?a\.?|s\.?l\.?u?|s\.?l\.?|sau|sa|slu|sl)\b/g,' ');
+  s = s.replace(/\b(grupo|obras|servicios|ingenieria|ingeniería|construcciones|construccion)\b/g,' ');
+  s = s.replace(/\s+/g,' ').trim();
+  const toks = s.split(' ').filter(t=>t && t.length>=3 && !STOPWORDS.has(t));
+  return toks.join(' ');
+}
+const companySeenBySheet = new Map();
+function isDuplicateInSheet(sheet, company, coord){
+  const norm = normalizeCompanyName(company);
+  if(!companySeenBySheet.has(sheet)) companySeenBySheet.set(sheet, new Map());
+  const mapCompany = companySeenBySheet.get(sheet);
+  if(!mapCompany.has(norm)){ mapCompany.set(norm, [coord]); return false; }
+  const arr = mapCompany.get(norm);
+  const dup = arr.some(c => haversineKm(c.lat,c.lng,coord.lat,coord.lng) < 0.075); // 75 m
+  if(!dup) arr.push(coord);
+  return dup;
+}
+
+/** ========= FILTROS + CAPAS ========= **/
+let layers = [];
+let bounds = [];
+let filters = {};
+const legendBody = document.getElementById('legendBody');
+
+function normalizeSheetName(name){ return name || 'Hoja'; }
+
+function renderLegend(){
+  const sheets = Object.keys(filters);
+  if(!sheets.length){
+    legendBody.innerHTML = `<div class="hint">No hay datos.</div>`;
+    return;
   }
 
-  // ===== Geocoding (fallback) =====
-  let geoCache={}; const GEO_CACHE_KEY='geoCacheV3';
-  try{ geoCache=JSON.parse(localStorage.getItem(GEO_CACHE_KEY)||'{}'); }catch(e){ geoCache={}; }
-  async function geocode(text){
-    if(PUBLISHED_MODE) return null;
-    const key=slug(text);
-    if(geoCache[key]) return geoCache[key];
-    await sleep(250);
-    const url=new URL('https://nominatim.openstreetmap.org/search');
-    url.searchParams.set('format','json');
-    url.searchParams.set('limit','1');
-    url.searchParams.set('q', text+', España');
-    const res=await fetch(url,{headers:{'Accept':'application/json'}});
-    if(!res.ok) return null;
-    const data=await res.json();
-    if(Array.isArray(data)&&data[0]){
-      const r={lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
-      geoCache[key]=r;
-      localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(geoCache));
-      return r;
-    }
-    return null;
-  }
+  const frag = [];
+  sheets.forEach(sheet=>{
+    const f = filters[sheet];
+    const sheetOn = !!f.__checked;
 
-  // ===== Capas / filtros =====
-  let layers=[];
-
-  // bounds separados (para que KML pueda limpiarse sin romper puntos)
-  let boundsPts = [];
-  let boundsKml = [];
-
-  const legendBody = document.getElementById('legendBody');
-
-  function normalizeSheetName(name){
-    const raw = (name || '').toString().trim();
-    const n = slug(raw);
-    if(n.includes('canter')) return 'Canteras';
-    if(n.includes('planta')) return 'Plantas';
-    if(n.includes('verted')) return 'Vertederos';
-    if(n.includes('prest'))  return 'Préstamos';
-    return raw || 'Hoja';
-  }
-
-  let filters = {};
-
-  function renderLegend(){
-    const sheets = Object.keys(filters);
-    if(!sheets.length){
-      legendBody.innerHTML = `<div class="hint">
-        Excel esperado: A=Grupo (arrastre), B=Nombre, C/D=Coordenadas.
-        <br>KML: selecciona el .kml y sus imágenes (GroundOverlay).
-      </div>`;
-      return;
-    }
-    const frag = [];
-    sheets.forEach(sheet=>{
-      const sheetChecked = !!filters[sheet].__checked;
-      const groups = filters[sheet].groups || {};
-      const sheetColor = sheetCategoryColor(sheet);
-      frag.push(`
-        <div class="sheet">
-          <div class="sheet-title">
-            <span class="swatch" style="background:${sheetColor}"></span>
-            <label><input type="checkbox" class="chk-sheet" data-sheet="${sheet}" ${sheetChecked?'checked':''}> ${sheet}</label>
-            <div class="actions">
-              <button class="btn-all" data-sheet="${sheet}">Todos</button>
-              <button class="btn-none" data-sheet="${sheet}">Ninguno</button>
-            </div>
+    frag.push(`
+      <div class="sheet">
+        <div class="sheet-title">
+          <label style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" class="chk-sheet" data-sheet="${sheet}" ${sheetOn?'checked':''}>
+            <span style="font-weight:900">${sheet}</span>
+          </label>
+          <div class="actions">
+            <button class="btn-all" data-sheet="${sheet}">Todos</button>
+            <button class="btn-none" data-sheet="${sheet}">Ninguno</button>
           </div>
+        </div>
+
+        <div class="subhead">Tipo / Grupo</div>
+    `);
+
+    Object.keys(f.groups).sort().forEach(g=>{
+      const on = f.groups[g];
+      const gcol = colorForGroup(sheet,g);
+      frag.push(`
+        <div class="row">
+          <span class="swatch" style="background:${gcol}"></span>
+          <label style="flex:1 1 auto">
+            <input type="checkbox" class="chk-group" data-sheet="${sheet}" data-group="${g}" ${on?'checked':''}>
+            ${g}
+          </label>
+        </div>
       `);
-      Object.keys(groups).forEach(g=>{
-        const on = !!groups[g];
-        const gcol = colorForGroup(sheet,g);
+    });
+
+    if(f.subgroups && Object.keys(f.subgroups).length){
+      frag.push(`<details><summary>Subgrupos</summary>`);
+      Object.keys(f.subgroups).sort().forEach(sg=>{
+        const on = f.subgroups[sg];
         frag.push(`
           <div class="row">
-            <span class="swatch" style="background:${gcol}"></span>
-            <label style="flex:1 1 auto"><input type="checkbox" class="chk-group" data-sheet="${sheet}" data-group="${g}" ${on?'checked':''}> ${g}</label>
+            <span class="swatch" style="background:#fff"></span>
+            <label style="flex:1 1 auto">
+              <input type="checkbox" class="chk-sub" data-sheet="${sheet}" data-sub="${sg}" ${on?'checked':''}>
+              ${sg}
+            </label>
           </div>
         `);
       });
-      frag.push(`</div>`);
-    });
-    legendBody.innerHTML = frag.join('');
-
-    legendBody.querySelectorAll('.chk-sheet').forEach(el=>{
-      el.addEventListener('change', ()=>{
-        const s=el.dataset.sheet; const val=el.checked;
-        filters[s].__checked = val;
-        Object.keys(filters[s].groups).forEach(g=> filters[s].groups[g]=val);
-        applyFilters(); renderLegend();
-      });
-    });
-    legendBody.querySelectorAll('.chk-group').forEach(el=>{
-      el.addEventListener('change', ()=>{
-        const s=el.dataset.sheet; const g=el.dataset.group;
-        filters[s].groups[g] = el.checked;
-        const anyOn = Object.values(filters[s].groups).some(v=>v);
-        filters[s].__checked = anyOn;
-        applyFilters(); renderLegend();
-      });
-    });
-    legendBody.querySelectorAll('.btn-all').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const s=btn.dataset.sheet;
-        filters[s].__checked = true;
-        Object.keys(filters[s].groups).forEach(g=> filters[s].groups[g]=true);
-        applyFilters(); renderLegend();
-      });
-    });
-    legendBody.querySelectorAll('.btn-none').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const s=btn.dataset.sheet;
-        filters[s].__checked = false;
-        Object.keys(filters[s].groups).forEach(g=> filters[s].groups[g]=false);
-        applyFilters(); renderLegend();
-      });
-    });
-  }
-
-  function inKmRadius(lat2,lng2){
-    const v=parseFloat(document.getElementById('km').value);
-    if(isNaN(v) || v<=0) return true;
-    const R=6371,toRad=d=>d*Math.PI/180;
-    const dLat=toRad(lat2-ORIGIN.lat), dLon=toRad(lng2-ORIGIN.lng);
-    const a=Math.sin(dLat/2)**2 + Math.cos(toRad(ORIGIN.lat))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-    const d=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-    return d<=v+1e-9;
-  }
-
-  function applyFilters(){
-    layers.forEach(Lr=>{
-      const sheetOn = filters[Lr.sheet]?.__checked ?? true;
-      const groupOn = filters[Lr.sheet]?.groups?.[Lr.group] ?? true;
-      const radiusOk = inKmRadius(Lr.lat, Lr.lng);
-      const show = sheetOn && groupOn && radiusOk;
-      if(show){ if(!map.hasLayer(Lr.marker)) Lr.marker.addTo(map); }
-      else{ if(map.hasLayer(Lr.marker)) map.removeLayer(Lr.marker); }
-    });
-    layoutLabels();
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
-  }
-
-  function layoutLabels(){
-    document.querySelectorAll('.lbl').forEach(el=>el.remove());
-    const toggle = document.getElementById('toggleLabels');
-    if(toggle && !toggle.checked) return;
-
-    const vis=layers.filter(Lr=> map.hasLayer(Lr.marker));
-    const pane=document.querySelector('.label-pane');
-    if(!pane) return;
-
-    const occ=[]; function ov(a,b){return !(b.x>a.x+a.w || b.x+b.w<a.x || b.y>a.y+a.h || b.y+b.h<a.y);}
-
-    const meas=document.createElement('div');
-    meas.className='lbl';
-    meas.style.left='-1000px';
-    meas.style.top='-1000px';
-    meas.style.visibility='hidden';
-    pane.appendChild(meas);
-
-    vis.forEach(Lr=>{
-      const pt=map.latLngToLayerPoint([Lr.lat,Lr.lng]);
-      meas.textContent=Lr.title||'·';
-      const bb=meas.getBoundingClientRect();
-      const w=bb.width,h=bb.height;
-      const steps=[[0,-18],[18,-18],[18,0],[18,18],[0,18],[-18,18],[-18,0],[-18,-18]];
-      let placed=null;
-
-      for(let r=1;r<=7 && !placed;r++){
-        for(let k=0;k<steps.length && !placed;k++){
-          const x=pt.x+steps[k][0]*r, y=pt.y+steps[k][1]*r;
-          const rect={x,y,w:w+12,h:h+8};
-          const pad={x:x-4,y:y-4,w:w+20,h:h+16};
-          if(occ.every(rr=>!ov(pad,rr))) placed=rect;
-        }
-      }
-      if(!placed) placed={x:pt.x+12,y:pt.y-(h+20),w:w+12,h:h+8};
-      occ.push(placed);
-
-      const div=document.createElement('div');
-      div.className='lbl';
-      div.dataset.id = Lr.id;
-      div.style.left=placed.x+'px';
-      div.style.top=placed.y+'px';
-      div.style.borderColor = sheetCategoryColor(Lr.sheet);
-      div.style.background = catColorAlpha(Lr.sheet, 0.28);
-      div.textContent=Lr.title||'·';
-      div.onclick=()=>{ map.openPopup(Lr.popup, [Lr.lat,Lr.lng]); };
-      pane.appendChild(div);
-    });
-
-    meas.remove();
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
-  }
-
-  map.on('moveend zoomend', layoutLabels);
-  window.addEventListener('resize', layoutLabels);
-
-  function clearAll(){
-    layers.forEach(Lr=> map.removeLayer(Lr.marker));
-    layers=[];
-    boundsPts=[];
-    companySeenBySheet.clear();
-  }
-
-  function addPoint({sheet, group, company, place, coord}){
-    const pinColor = colorForGroup(sheet, group);
-    function popupHtml(){
-      const km = haversineKm(ORIGIN.lat, ORIGIN.lng, coord.lat, coord.lng);
-      const kmTxt = (km >= 100) ? `${km.toFixed(0)} km` : `${km.toFixed(1)} km`;
-      const url = gmapsDirUrl(coord.lat, coord.lng);
-      const uniquePdf = selectUniquePdfForCompany(company);
-      const pdfLinks = uniquePdf
-        ? `<ul style="margin:4px 0 0 16px;padding:0"><li style="margin:2px 0"><a href="${uniquePdf.url}" target="_blank" rel="noopener">📄 ${uniquePdf.name}</a></li></ul>`
-        : `<span style="color:#999">Sin PDF asociado</span>`;
-      return `
-        <div style="font:14px Arial;max-width:520px">
-          <h3 style="margin:0 0 4px 0;font-size:16px">${company}</h3>
-          <div style="font-size:12px;color:#444;margin:4px 0">Capa: <b>${sheet}</b> · Grupo: <b>${group}</b></div>
-          <div style="font-size:12px;color:#666">Coordenadas/Localización: ${place || '-'}</div>
-          <div style="font-size:12px;color:#111;margin-top:6px">Distancia a obra: <b>${kmTxt}</b></div>
-          <div style="margin-top:6px"><a href="${url}" target="_blank" rel="noopener" style="font-size:12px;">🧭 Ver ruta en Google&nbsp;Maps</a></div>
-          <div style="font-size:12px;color:#111;margin-top:8px">Documento asociado:</div>
-          ${pdfLinks}
-          <div style="font-size:11px;color:#666;margin-top:8px">Coord: ${coord.lat.toFixed(6)}, ${coord.lng.toFixed(6)}</div>
-        </div>`;
+      frag.push(`</details>`);
     }
 
-    const popup = L.popup({autoPan:true, closeButton:true});
-    const marker = L.marker([coord.lat, coord.lng], {icon: markerIcon(pinColor)});
-    marker.bindPopup(popup).addTo(map);
+    frag.push(`</div>`);
+  });
 
-    const id = `pt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    marker.on('popupopen', ()=>{ popup.setContent(popupHtml()); });
+  legendBody.innerHTML = frag.join('');
 
-    layers.push({ id, marker, popup, popupHtml, lat:coord.lat, lng:coord.lng, title:company, sheet, group, company, place });
+  legendBody.querySelectorAll('.chk-sheet').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      const s=el.dataset.sheet, val=el.checked;
+      filters[s].__checked = val;
+      Object.keys(filters[s].groups).forEach(k=>filters[s].groups[k]=val);
+      if(filters[s].subgroups) Object.keys(filters[s].subgroups).forEach(k=>filters[s].subgroups[k]=val);
+      applyFilters(); renderLegend();
+    });
+  });
 
-    boundsPts.push([coord.lat, coord.lng]);
-  }
+  legendBody.querySelectorAll('.chk-group').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      const s=el.dataset.sheet, g=el.dataset.group;
+      filters[s].groups[g] = el.checked;
+      const anyOn = Object.values(filters[s].groups).some(v=>v);
+      filters[s].__checked = anyOn;
+      applyFilters(); renderLegend();
+    });
+  });
 
-  const companySeenBySheet = new Map();
-  function isDuplicateInSheet(sheet, company, coord){
-    const norm = normalizeCompanyName(company);
-    if(!companySeenBySheet.has(sheet)) companySeenBySheet.set(sheet, new Map());
-    const mapCompany = companySeenBySheet.get(sheet);
-    if(!mapCompany.has(norm)){ mapCompany.set(norm, [coord]); return false; }
-    const arr = mapCompany.get(norm);
-    const dup = arr.some(c => haversineKm(c.lat,c.lng,coord.lat,coord.lng) < 0.075);
-    if(!dup) arr.push(coord);
-    return dup;
-  }
+  legendBody.querySelectorAll('.chk-sub').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      const s=el.dataset.sheet, sg=el.dataset.sub;
+      filters[s].subgroups[sg] = el.checked;
+      applyFilters(); renderLegend();
+    });
+  });
 
-  async function handleExcel(file){
-    if(PUBLISHED_MODE){ setStatus('MODO PUBLICADO: carga de Excel bloqueada.'); return; }
+  legendBody.querySelectorAll('.btn-all').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const s=btn.dataset.sheet;
+      filters[s].__checked = true;
+      Object.keys(filters[s].groups).forEach(k=>filters[s].groups[k]=true);
+      if(filters[s].subgroups) Object.keys(filters[s].subgroups).forEach(k=>filters[s].subgroups[k]=true);
+      applyFilters(); renderLegend();
+    });
+  });
 
-    try{
-      if(!window.XLSX){ setStatus('Cargando motor Excel…'); await waitFor(()=>!!window.XLSX, 10000); }
-    }catch{ setStatus('No se pudo cargar XLSX. ¿Bloqueo de CDN?'); return; }
+  legendBody.querySelectorAll('.btn-none').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const s=btn.dataset.sheet;
+      filters[s].__checked = false;
+      Object.keys(filters[s].groups).forEach(k=>filters[s].groups[k]=false);
+      if(filters[s].subgroups) Object.keys(filters[s].subgroups).forEach(k=>filters[s].subgroups[k]=false);
+      applyFilters(); renderLegend();
+    });
+  });
+}
 
-    try{
-      clearAll();
-      setStatus('Leyendo Excel…');
-      const ab = await file.arrayBuffer();
-      const wb = XLSX.read(ab, {type:'array'});
+function inKmRadius(lat,lng){
+  const v=parseFloat(document.getElementById('km').value);
+  if(!ORIGIN) return true;
+  if(isNaN(v) || v<=0) return true;
+  return haversineKm(ORIGIN.lat, ORIGIN.lng, lat, lng) <= v + 1e-9;
+}
 
-      filters = {}; let added = 0;
+function applyFilters(){
+  layers.forEach(Lr=>{
+    const f = filters[Lr.sheet];
+    const sheetOn = f?.__checked ?? true;
+    const groupOn = f?.groups?.[Lr.group] ?? true;
+    const subOn   = f?.subgroups ? (f.subgroups[Lr.subgrupo] ?? true) : true;
+    const radiusOk = inKmRadius(Lr.lat, Lr.lng);
+    const show = sheetOn && groupOn && subOn && radiusOk;
 
-      for(const rawName of wb.SheetNames){
-        const alias = normalizeSheetName(rawName);
-        const sheet = wb.Sheets[rawName]; if(!sheet) continue;
-
-        const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', blankrows:false});
-        if(!rows || !rows.length) continue;
-
-        const first = (rows[0]||[]).map(v=>String(v).toLowerCase());
-        const looksHeader =
-          first.join(' ').includes('material') ||
-          first.join(' ').includes('residu') ||
-          first.join(' ').includes('empresa') ||
-          first.join(' ').includes('coorden') ||
-          first.join(' ').includes('localiz') ||
-          first.join(' ').includes('lat') ||
-          first.join(' ').includes('lon');
-
-        const dataRows = looksHeader ? rows.slice(1) : rows;
-
-        if(!filters[alias]) filters[alias] = { __checked: true, groups: {} };
-
-        let lastGroup = '(Sin grupo)';
-
-        for(const r of dataRows){
-          const c0 = (r[0] ?? '').toString().trim(); // grupo
-          const c1 = (r[1] ?? '').toString().trim(); // nombre
-          const c2 = (r[2] ?? '').toString().trim(); // lat o "lat/lon"
-          const c3 = (r[3] ?? '').toString().trim(); // lon
-
-          if(c0) lastGroup = c0;
-          const groupKey = lastGroup || '(Sin grupo)';
-          const company = c1;
-          if(!company) continue;
-
-          if(!(groupKey in filters[alias].groups)) filters[alias].groups[groupKey] = true;
-
-          let coord = parseCoordCells(c2, c3);
-          let place = '';
-
-          if(coord){
-            place = (c2 && c3) ? `${c2} / ${c3}` : (c2 || '');
-          }else{
-            // fallback por si alguna hoja todavía no está con coord
-            place = c2 || '';
-            if(place) coord = await geocode(place);
-          }
-          if(!coord) continue;
-
-          if(isDuplicateInSheet(alias, company, coord)) continue;
-
-          selectUniquePdfForCompany(company);
-          addPoint({sheet: alias, group: groupKey, company, place, coord});
-          added++;
-        }
-      }
-
-      renderLegend(); applyFilters();
-
-      if(added){
-        fitAll();
-        layoutLabels();
-        setStatus(`Cargado: ${added} punto(s) en ${Object.keys(filters).length} hoja(s).`);
-      } else {
-        setStatus('Excel leído pero no se añadieron puntos. Revisa: A=Grupo · B=Nombre · C/D=coordenadas.');
-      }
-    }catch(err){
-      console.error(err);
-      setStatus('Error leyendo el Excel.\n' + (err && (err.stack || err.message) || err));
+    if(show){
+      if(!map.hasLayer(Lr.marker)) Lr.marker.addTo(map);
+    } else {
+      if(map.hasLayer(Lr.marker)) map.removeLayer(Lr.marker);
     }
-  }
+  });
+  layoutLabels();
+  if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){ } }
+}
 
-  function fitAll(){
-    const all = [];
-    boundsPts.forEach(p=>all.push(p));
-    boundsKml.forEach(p=>all.push(p));
-    if(obraMarker) all.push([ORIGIN.lat, ORIGIN.lng]);
-    if(all.length) map.fitBounds(all,{padding:[20,20]});
-    else map.setView([ORIGIN.lat,ORIGIN.lng], 11);
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
-  }
+/** ========= ETIQUETAS ========= **/
+function layoutLabels(){
+  document.querySelectorAll('.lbl').forEach(el=>el.remove());
+  const toggle = document.getElementById('toggleLabels');
+  if(toggle && !toggle.checked) return;
 
-  // =======================
-  // ✅ KML (GroundOverlay + Placemarks opcionales)
-  // =======================
-  function baseName(p){
-    if(!p) return '';
-    const s = String(p).split('?')[0].split('#')[0];
-    return s.split('/').pop();
-  }
-  function getText(node, sel){
-    const el = node.querySelector(sel);
-    return el ? (el.textContent || '').trim() : '';
-  }
-  function numOrNull(s){
-    const v = parseFloat(String(s).replace(',','.'));
-    return Number.isFinite(v) ? v : null;
-  }
-  function parseLatLonBox(go){
-    const north = numOrNull(getText(go,'LatLonBox>north'));
-    const south = numOrNull(getText(go,'LatLonBox>south'));
-    const east  = numOrNull(getText(go,'LatLonBox>east'));
-    const west  = numOrNull(getText(go,'LatLonBox>west'));
-    const rot   = numOrNull(getText(go,'LatLonBox>rotation')) || 0;
-    if([north,south,east,west].some(v=>v===null)) return null;
-    return {north,south,east,west,rotation:rot};
-  }
+  const vis = layers.filter(Lr=> map.hasLayer(Lr.marker));
+  if(!vis.length) return;
 
-  function clearKmlLayers(){
-    try{ kmlVectorsLayer.clearLayers(); }catch(_){}
-    try{ kmlImagesLayer.clearLayers(); }catch(_){}
-    boundsKml = [];
-    setStatus('KML limpiado.');
-    layoutLabels();
-  }
+  const pane = document.querySelector('.label-pane');
+  if(!pane) return;
 
-  async function handleKmlUpload(fileList){
-    if(PUBLISHED_MODE){ setStatus('MODO PUBLICADO: carga de KML bloqueada.'); return; }
-    if(!fileList || !fileList.length) return;
+  const occ=[];
+  function ov(a,b){return !(b.x>a.x+a.w || b.x+b.w<a.x || b.y>a.y+a.h || b.y+b.h<a.y);}
 
-    // limpia KML anterior (si quieres acumular varios, quita esta línea)
-    clearKmlLayers();
+  const meas=document.createElement('div');
+  meas.className='lbl';
+  meas.style.left='-1000px';
+  meas.style.top='-1000px';
+  meas.style.visibility='hidden';
+  pane.appendChild(meas);
 
-    // separa KML e imágenes
-    let kmlFile = null;
-    const imgMap = new Map(); // nombre -> objectURL
+  vis.forEach(Lr=>{
+    const pt=map.latLngToLayerPoint([Lr.lat,Lr.lng]);
+    meas.textContent=Lr.title||'·';
+    const bb=meas.getBoundingClientRect();
+    const w=bb.width,h=bb.height;
+    const steps=[[0,-18],[18,-18],[18,0],[18,18],[0,18],[-18,18],[-18,0],[-18,-18]];
+    let placed=null;
 
-    for(const f of fileList){
-      const n = (f.name||'').toLowerCase();
-      if(n.endsWith('.kml') || n.endsWith('.xml')) kmlFile = kmlFile || f;
-
-      if(n.match(/\.(png|jpg|jpeg|webp|gif)$/i)){
-        const url = URL.createObjectURL(f);
-        imgMap.set((f.name||'').toLowerCase(), url);
-        imgMap.set(baseName(f.name).toLowerCase(), url);
+    for(let r=1;r<=7 && !placed;r++){
+      for(let k=0;k<steps.length && !placed;k++){
+        const x=pt.x+steps[k][0]*r, y=pt.y+steps[k][1]*r;
+        const rect={x,y,w:w+12,h:h+8};
+        const pad={x:x-4,y:y-4,w:w+20,h:h+16};
+        if(occ.every(rr=>!ov(pad,rr))) placed=rect;
       }
     }
+    if(!placed) placed={x:pt.x+12,y:pt.y-(h+20),w:w+12,h:h+8};
+    occ.push(placed);
 
-    if(!kmlFile){
-      setStatus('No se encontró ningún .kml en la selección.');
-      return;
-    }
+    const div=document.createElement('div');
+    div.className='lbl';
+    div.style.left=placed.x+'px';
+    div.style.top=placed.y+'px';
+    div.style.borderColor = colorForGroup(Lr.sheet, Lr.group);
+    div.style.background = 'rgba(255,255,255,.92)';
+    div.textContent=Lr.title||'·';
+    div.onclick=()=>{ map.openPopup(Lr.popup, [Lr.lat,Lr.lng]); };
+    pane.appendChild(div);
+  });
 
-    setStatus(`Leyendo KML: ${kmlFile.name} …`);
-    const kmlText = await kmlFile.text();
+  meas.remove();
+  if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){ } }
+}
+map.on('moveend zoomend', layoutLabels);
+window.addEventListener('resize', layoutLabels);
 
-    const xml = new DOMParser().parseFromString(kmlText, 'text/xml');
-    const parseErr = xml.querySelector('parsererror');
-    if(parseErr){
-      setStatus('El KML no es XML válido (parsererror).');
-      return;
-    }
+/** ========= PDF ========= **/
+function cleanPdfName(s){
+  if(!s) return "";
+  let t = (""+s).trim();
+  t = t.replace(/^📄\s*/,'').trim();
+  if(t && !t.toLowerCase().endsWith(".pdf")) t += ".pdf";
+  t = t.replace(/\\/g,'/').split('/').pop();
+  return t;
+}
 
-    // --- 1) GroundOverlay (imagen superpuesta)
-    const overlays = Array.from(xml.querySelectorAll('GroundOverlay'));
-    let addedImg = 0;
+/** ========= PUNTOS ========= **/
+function addPoint({sheet, group, subgrupo, company, place, coord, pdfName}){
+  const pinColor = colorForGroup(sheet, group);
+  const popup = L.popup({autoPan:true, closeButton:true});
 
-    for(const go of overlays){
-      const href = getText(go,'Icon>href');
-      const box  = parseLatLonBox(go);
-      if(!href || !box) continue;
+  function popupHtml(){
+    const km = ORIGIN ? haversineKm(ORIGIN.lat, ORIGIN.lng, coord.lat, coord.lng) : null;
+    const kmTxt = (km===null) ? '-' : ((km >= 100) ? `${km.toFixed(0)} km` : `${km.toFixed(1)} km`);
+    const url = ORIGIN ? gmapsDirUrl(coord.lat, coord.lng) : '#';
 
-      // resuelve imagen
-      let imgUrl = null;
-      if(/^https?:\/\//i.test(href) || /^data:/i.test(href)){
-        imgUrl = href;
-      }else{
-        const bn = baseName(href).toLowerCase();
-        imgUrl = imgMap.get(href.toLowerCase()) || imgMap.get(bn) || null;
-      }
+    const pdfClean = cleanPdfName(pdfName);
+    const pdfUrl = pdfClean ? `${PDF_DIR}${encodeURIComponent(pdfClean)}?${CACHE_BUST}` : "";
+    const pdfBlock = pdfClean
+      ? `<ul style="margin:4px 0 0 16px;padding:0"><li style="margin:2px 0"><a href="${pdfUrl}" target="_blank" rel="noopener">📄 ${pdfClean}</a></li></ul>`
+      : `<span style="color:#999">Sin PDF asociado</span>`;
 
-      if(!imgUrl){
-        setStatus(`KML leído. Falta la imagen del GroundOverlay: "${href}".\nSelecciona también esa imagen al cargar el KML.`);
-        continue;
-      }
-
-      const boundsOverlay = [[box.south, box.west],[box.north, box.east]];
-      const name = getText(go,'name') || baseName(href) || 'GroundOverlay';
-
-      if(Math.abs(box.rotation) > 0.0001){
-        // Leaflet no rota ImageOverlay “de serie”
-        setStatus(`KML: GroundOverlay "${name}" tiene rotación (${box.rotation}°). En esta versión se dibuja sin rotación.`);
-      }
-
-      const layer = L.imageOverlay(imgUrl, boundsOverlay, {opacity: 0.65, interactive:true});
-      layer.addTo(kmlImagesLayer);
-
-      // esquinas para zoom a todo
-      boundsKml.push([box.south, box.west]);
-      boundsKml.push([box.south, box.east]);
-      boundsKml.push([box.north, box.west]);
-      boundsKml.push([box.north, box.east]);
-
-      layer.on('click', (e)=>{
-        L.popup()
-          .setLatLng(e.latlng)
-          .setContent(`<b>${name}</b><br><span style="font-size:12px;color:#555">GroundOverlay</span>`)
-          .openOn(map);
-      });
-
-      addedImg++;
-    }
-
-    // --- 2) Placemarks (opcional): puntos/líneas/polígonos
-    let addedVec = 0;
-    try{
-      const tj = window.toGeoJSON && typeof window.toGeoJSON.kml === 'function' ? window.toGeoJSON : null;
-      if(tj){
-        const gj = tj.kml(xml);
-        const geo = L.geoJSON(gj, {
-          style: ()=>({weight:2}),
-          pointToLayer: (f, latlng)=> L.circleMarker(latlng, {radius:6, weight:2, fillOpacity:0.15}),
-          onEachFeature: (f, layer)=>{
-            const nm = (f.properties && (f.properties.name || f.properties.Name)) || 'KML';
-            layer.bindPopup(`<b>${nm}</b>`);
-          }
-        });
-        geo.addTo(kmlVectorsLayer);
-        addedVec = (gj.features || []).length;
-
-        // añade bounds de vectores para zoom
-        try{
-          const bb = geo.getBounds && geo.getBounds();
-          if(bb && bb.isValid && bb.isValid()){
-            const sw = bb.getSouthWest(), ne = bb.getNorthEast();
-            boundsKml.push([sw.lat, sw.lng]);
-            boundsKml.push([ne.lat, ne.lng]);
-          }
-        }catch(_){}
-      }
-    }catch(_){}
-
-    if(addedImg || addedVec){
-      fitAll();
-      layoutLabels();
-      setStatus(`KML cargado. Imágenes: ${addedImg} · Vectores: ${addedVec}`);
-    }else{
-      setStatus('KML leído, pero no se añadieron overlays ni vectores.');
-    }
+    return `
+      <div style="font:14px Arial;max-width:640px">
+        <h3 style="margin:0 0 4px 0;font-size:16px">${company} <span style="font-weight:900">Ꝿ</span></h3>
+        <div style="font-size:12px;color:#444;margin:4px 0">
+          Hoja: <b>${sheet}</b><br>
+          Tipo/Grupo: <b>${group}</b><br>
+          Subgrupo: <b>${subgrupo || '-'}</b>
+        </div>
+        <div style="font-size:12px;color:#666">Posición/Localización: ${place || '-'}</div>
+        <div style="font-size:12px;color:#111;margin-top:6px">Distancia a obra: <b>${kmTxt}</b></div>
+        <div style="margin-top:6px">
+          ${ORIGIN ? `<a href="${url}" target="_blank" rel="noopener" style="font-size:12px;">🧭 Ver ruta a obra (Google Maps)</a>` : `<span style="color:#999">Origen (Hoja2) no cargado</span>`}
+        </div>
+        <div style="font-size:12px;color:#111;margin-top:8px">Carta/Documento:</div>
+        ${pdfBlock}
+        <div style="font-size:11px;color:#666;margin-top:8px">Coord: ${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}</div>
+      </div>
+    `;
   }
 
-  // ===== Eventos UI =====
-  document.getElementById('btnFit').onclick = ()=>{ if(PUBLISHED_MODE) return; fitAll(); };
-  document.getElementById('btnApplyKm').onclick = ()=>{
-    if(PUBLISHED_MODE) return;
-    refreshCircle(); applyFilters();
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
+  const marker = L.marker([coord.lat, coord.lng], {icon: markerIcon(pinColor)});
+  marker.bindPopup(popup);
+  marker.on('click', ()=>{ popup.setContent(popupHtml()); });
+  marker.addTo(map);
+
+  layers.push({
+    marker,
+    popup,
+    sheet,
+    group,
+    subgrupo,
+    title: company,
+    company,
+    place,
+    lat: coord.lat,
+    lng: coord.lng
+  });
+  bounds.push([coord.lat, coord.lng]);
+}
+
+/** ========= DETECCIÓN COLUMNAS (robusta) ========= **/
+function detectHeaderRow(rows){
+  // busca una fila con palabras típicas
+  const keys = ['tipo','grupo','subgrupo','empresa','nombre','posicion','posición','localizacion','localización','ubicacion','ubicación','lat','latitud','lon','longitud','pdf','carta','documento'];
+  for(let i=0;i<Math.min(rows.length,30);i++){
+    const r = (rows[i]||[]).map(v=>slug(String(v)));
+    const hit = keys.filter(k => r.some(x => x===k || x.includes(k))).length;
+    if(hit>=3) return i;
+  }
+  return 0; // fallback
+}
+
+function buildColMap(header){
+  const h = header.map(v=>slug(String(v)));
+  const idx = (arr)=> arr.map(k=>h.findIndex(x=>x===k || x.includes(k))).find(i=>i!==-1);
+
+  return {
+    colGroup: idx(['tipo','grupo','category']),
+    colSub: idx(['subgrupo','sub-grupo','sub grupo']),
+    colCompany: idx(['empresa','nombre','proveedor','subcontrata','subcontratista']),
+    colPlace: idx(['posicion','posición','localizacion','localización','ubicacion','ubicación','direccion','dirección','municipio']),
+    colLat: idx(['latitud','lat']),
+    colLon: idx(['longitud','lon','lng']),
+    colPdf: idx(['pdf','carta','documento','compromiso'])
   };
-  document.getElementById('btnClearKm').onclick = ()=>{
-    if(PUBLISHED_MODE) return;
-    document.getElementById('km').value='';
-    refreshCircle(); applyFilters();
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
-  };
-  document.getElementById('km').addEventListener('input', ()=>{
-    if(PUBLISHED_MODE) return;
-    refreshCircle(); applyFilters();
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
-  });
+}
 
-  document.getElementById('fileXLSX').addEventListener('change', (e)=>{
-    if(PUBLISHED_MODE) return;
-    const f = e.target.files && e.target.files[0];
-    if(f){ handleExcel(f); }
-  });
+/** ========= CARGA EXCEL DESDE REPO ========= **/
+async function loadExcelFromRepo(){
+  setStatus("Cargando Excel desde GitHub…");
+  const excelUrl = `${PATH_EXCEL}?${CACHE_BUST}`;
 
-  document.getElementById('fileKML').addEventListener('change', (e)=>{
-    if(PUBLISHED_MODE) return;
-    const files = e.target.files;
-    if(files && files.length) handleKmlUpload(files);
-  });
-
-  document.getElementById('btnClearKML').addEventListener('click', ()=>{
-    if(PUBLISHED_MODE) return;
-    clearKmlLayers();
-  });
-
-  document.getElementById('filePDF').addEventListener('change', (e)=>{
-    if(PUBLISHED_MODE) return;
-    const files = e.target.files;
-    if(files && files.length){
-      indexPdfs(files);
-      setStatus(`Cargados ${files.length} PDF(s). Asociación única por empresa.`);
-    }
-  });
-
-  function positionTitlebar(){
-    const tb = document.getElementById('titlebar');
-    const tag = document.getElementById('cornerTag');
-    if(!tb || !tag) return;
-    const gap = 8, margin = 10, tagH = tag.offsetHeight || 0;
-    tb.style.left = margin + 'px';
-    tb.style.right = 'auto';
-    tb.style.bottom = (margin + tagH + gap) + 'px';
-  }
-  window.addEventListener('resize', positionTitlebar);
-
-  document.getElementById('fileLogo').addEventListener('change', (e)=>{
-    if(PUBLISHED_MODE) return;
-    const f = e.target.files && e.target.files[0];
-    if(!f) return;
-    const img = document.getElementById('logoImg');
-    const url = URL.createObjectURL(f);
-    img.src = url;
-    img.style.display='block';
-
-    const reader = new FileReader();
-    reader.onload = ()=>{
-      try{ localStorage.setItem('logoDataURL', reader.result); }catch(_){}
-      positionTitlebar();
-    };
-    reader.readAsDataURL(f);
-    positionTitlebar();
-  });
-
+  let ab;
   try{
-    const prevT = localStorage.getItem('mapTitle');
-    if(prevT) titleEl.textContent = prevT;
-  }catch(_){}
-  titleEl.addEventListener('input', ()=>{
-    if(PUBLISHED_MODE) return;
-    try{ localStorage.setItem('mapTitle', titleEl.textContent||''); }catch(_){}
-    positionTitlebar();
-  });
-
-  try{
-    const prevLogo = localStorage.getItem('logoDataURL');
-    if(prevLogo){
-      const img=document.getElementById('logoImg');
-      img.src=prevLogo;
-      img.style.display='block';
-    }
-  }catch(_){}
-
-  // pick
-  let picking=false; const btnPick = document.getElementById('btnPick');
-  function setPicking(on){
-    if(PUBLISHED_MODE) { picking=false; return; }
-    picking = on;
-    btnPick.textContent = picking ? '✅ Click en el mapa… (ESC para cancelar)' : '📍 Fijar obra por click';
-    btnPick.style.borderColor = picking ? '#16a34a' : '#ddd';
+    const res = await fetch(excelUrl, {cache:"no-store"});
+    if(!res.ok) throw new Error("No se pudo descargar el Excel: " + res.status + " " + res.statusText);
+    ab = await res.arrayBuffer();
+  }catch(err){
+    setStatus("ERROR cargando Excel.\n" + err.message + "\nURL: " + excelUrl);
+    return;
   }
-  btnPick.onclick = ()=>{ if(PUBLISHED_MODE) return; setPicking(!picking); };
 
-  map.on('click', (e)=>{
-    if(PUBLISHED_MODE) return;
-    if(!picking) return;
-    setOrigin(e.latlng.lat, e.latlng.lng);
-    if(obraMarker) obraMarker.openPopup();
-    setPicking(false);
-    setStatus('Obra fijada por click.');
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
-  });
-  window.addEventListener('keydown', (ev)=>{ if(ev.key==='Escape' && picking) setPicking(false); });
+  let wb;
+  try{
+    wb = XLSX.read(ab, {type:'array'});
+  }catch(err){
+    setStatus("ERROR leyendo el Excel.\n" + (err.message||err));
+    return;
+  }
 
-  document.getElementById('btnSetLatLon').onclick = ()=>{
-    if(PUBLISHED_MODE) return;
-    const val = (document.getElementById('inpLatLon').value||'').trim();
-    const m = val.match(/^\s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*$/);
-    if(!m){ setStatus('Formato lat,lon inválido. Ej: 37.3891,-5.9845'); return; }
-    const lat=parseFloat(m[1]), lng=parseFloat(m[3]);
-    if(!Number.isFinite(lat)||!Number.isFinite(lng)){ setStatus('lat/lon no numéricos.'); return; }
-    setOrigin(lat,lng);
-    map.setView([lat,lng], 13);
-    if(obraMarker) obraMarker.openPopup();
-    setStatus('Obra fijada por lat,lon.');
-    if(obraMarker){ try{ obraMarker.bringToFront(); }catch(_){} }
-  };
+  // ORIGEN obligatorio
+  let originInfo;
+  try{
+    originInfo = await readOriginStrictFromExcel(wb);
+    setOrigin(originInfo.lat, originInfo.lon, originInfo.name);
+  }catch(err){
+    setStatus("ERROR ORIGEN (Hoja2)\n" + err.message + "\n\nIMPORTANTE: aquí NO debe aparecer ninguna chincheta.");
+    return;
+  }
 
-  document.getElementById('btnPublish').onclick = ()=>{ setPublishedMode(true); };
+  // Datos
+  layers.forEach(Lr=>{ try{ map.removeLayer(Lr.marker); }catch(_){ } });
+  layers=[]; bounds=[]; filters={}; companySeenBySheet.clear();
 
-  // init
-  setOrigin(ORIGIN.lat, ORIGIN.lng, ORIGIN.name);
-  map.setView([ORIGIN.lat, ORIGIN.lng], 11);
+  let added = 0;
+
+  for(const rawName of wb.SheetNames){
+    if(slug(rawName).replace(/\s+/g,'') === 'hoja2') continue;
+
+    const sheetObj = wb.Sheets[rawName];
+    if(!sheetObj) continue;
+
+    const rows = XLSX.utils.sheet_to_json(sheetObj, {header:1, defval:'', blankrows:false});
+    if(!rows || !rows.length) continue;
+
+    const alias = normalizeSheetName(rawName);
+    if(!filters[alias]) filters[alias] = { __checked:true, groups:{}, subgroups:{} };
+
+    const headerRow = detectHeaderRow(rows);
+    const header = rows[headerRow] || [];
+    const cm = buildColMap(header);
+
+    const dataRows = rows.slice(headerRow+1);
+
+    let lastGroup = '(Sin tipo)';
+    for(const r of dataRows){
+      const get = (i)=> (i>=0 ? (r[i] ?? '') : '');
+
+      // intenta “fuentes”/“rutas” primero
+      let tipo = (get(cm.colGroup) || get(0)).toString().trim();
+      if(tipo) lastGroup = tipo;
+      tipo = lastGroup || '(Sin tipo)';
+
+      const subgrupo = ((get(cm.colSub) || get(1)).toString().trim()) || '(Sin subgrupo)';
+      const company  = (get(cm.colCompany) || get(2)).toString().trim();
+      const placeRaw = (get(cm.colPlace) || get(3)).toString().trim();
+      const pdfName  = (get(cm.colPdf) || get(4)).toString().trim();
+
+      if(!company) continue;
+
+      if(!(tipo in filters[alias].groups)) filters[alias].groups[tipo] = true;
+      if(!(subgrupo in filters[alias].subgroups)) filters[alias].subgroups[subgrupo] = true;
+
+      // coords: prioridad Lat/Lon si existen, si no, parse de "place"
+      let coord = null;
+
+      const latCell = get(cm.colLat);
+      const lonCell = get(cm.colLon);
+      if(String(latCell).trim() || String(lonCell).trim()){
+        coord = parseCoordCells(latCell, lonCell);
+      }
+      if(!coord){
+        coord = parseLatLonPairFromString(placeRaw);
+      }
+      if(!coord && placeRaw){
+        coord = await geocode(placeRaw);
+      }
+      if(!coord) continue;
+
+      if(isDuplicateInSheet(alias, company, coord)) continue;
+
+      addPoint({sheet: alias, group: tipo, subgrupo, company, place: placeRaw, coord, pdfName});
+      added++;
+    }
+  }
+
   renderLegend();
-  positionTitlebar();
-  setStatus('Listo. Carga Excel / KML y PDFs. Logo y título opcionales.');
-})();
+  applyFilters();
+
+  const allBounds = [...bounds, [ORIGIN.lat, ORIGIN.lng]];
+  if(allBounds.length) map.fitBounds(allBounds, {padding:[20,20]});
+
+  setStatus(
+    `OK: ${added} punto(s)\n` +
+    `OBRA (Hoja2): ${ORIGIN.name} (${ORIGIN.lat.toFixed(6)}, ${ORIGIN.lng.toFixed(6)})\n` +
+    `Excel: ${PATH_EXCEL}`
+  );
+}
+
+/** ========= EVENTOS TOOLBAR ========= **/
+document.getElementById('btnFit').addEventListener('click', ()=>{
+  const all = [...bounds];
+  if(ORIGIN) all.push([ORIGIN.lat, ORIGIN.lng]);
+  if(all.length) map.fitBounds(all,{padding:[20,20]});
+});
+
+document.getElementById('btnApplyKm').addEventListener('click', ()=>{
+  refreshCircle(); applyFilters();
+});
+document.getElementById('btnClearKm').addEventListener('click', ()=>{
+  document.getElementById('km').value='';
+  refreshCircle(); applyFilters();
+});
+document.getElementById('km').addEventListener('input', ()=>{
+  refreshCircle(); applyFilters();
+});
+document.getElementById('toggleLabels').addEventListener('change', ()=>{
+  layoutLabels();
+});
+
+/** ========= ARRANQUE ========= **/
+setStatus("BUILD FUENTES+RUTAS v2\nCargando Excel…");
+loadExcelFromRepo();
 </script>
 
 </body>
